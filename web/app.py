@@ -173,23 +173,20 @@ async def _read_bytes(upload: UploadFile, field_name: str, max_bytes: int = MAX_
     return data
 
 
-def _ocr_engine_ready() -> bool:
-    try:
-        from src.parse_overdue_rules_image import _get_rapid_ocr
+def _ocr_package_available() -> bool:
+    """패키지 설치 여부만 확인 (모델 로드·메모리 사용 없음)."""
+    import importlib.util
 
-        _get_rapid_ocr()
-        return True
-    except Exception:
-        return False
+    return importlib.util.find_spec("rapidocr") is not None
 
 
 @app.on_event("startup")
 async def startup_prepare_examples() -> None:
     ensure_example_files(EXAMPLES_DIR)
-    if _ocr_engine_ready():
-        logger.info("OCR 엔진 준비 완료")
+    if _ocr_package_available():
+        logger.info("rapidocr 패키지 확인됨 (모델은 첫 이미지 업로드 시 로드)")
     else:
-        logger.warning("OCR 엔진을 로드하지 못했습니다. 연체료 이미지 인식이 실패할 수 있습니다.")
+        logger.warning("rapidocr 패키지 없음 — 연체료 이미지 인식 불가")
 
 
 @app.get("/api/health")
@@ -203,7 +200,7 @@ def health_check():
         "supports_table_format": True,
         "app": "upload-web",
         "hwp_supported": hwp_conversion_available(),
-        "ocr_available": _ocr_engine_ready(),
+        "ocr_package": _ocr_package_available(),
         "public_url": os.environ.get("RENDER_EXTERNAL_URL"),
     }
 

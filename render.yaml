@@ -6,7 +6,12 @@ services:
     plan: free
     region: singapore
     healthCheckPath: /api/health
+    healthCheckGracePeriod: 120
     autoDeploy: true
     envVars:
       - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: OMP_NUM_THREADS
+        value: "1"
+      - key: OPENBLAS_NUM_THREADS
         value: "1"
