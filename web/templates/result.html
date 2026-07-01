@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html class="light" lang="ko">
+<head>
+  {% set page_title = "생성 완료" %}
+  {% include "includes/head.html" %}
+</head>
+<body class="bg-background text-on-surface min-h-screen flex flex-col">
+  {% include "includes/header.html" %}
+
+  <main class="flex-grow pt-8 pb-12 px-4 sm:px-6">
+    <div class="max-w-[800px] mx-auto space-y-8">
+      <nav>
+        <a href="/" class="flex items-center gap-2 text-primary font-label-md hover:underline transition-opacity">
+          <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+          다시 업로드
+        </a>
+      </nav>
+
+      <section class="space-y-2">
+        <div class="flex items-center gap-3 flex-wrap">
+          <h2 class="text-display font-display text-on-surface">생성 완료</h2>
+          <span class="bg-primary-container text-on-primary-container px-3 py-1 rounded-full text-label-md font-label-md">완료</span>
+        </div>
+        <p class="text-body-lg font-body-lg text-on-surface-variant">
+          문서 생성이 끝났습니다. 검수 목록을 확인한 뒤 zip을 다운로드하세요.
+        </p>
+      </section>
+
+      {% if masking_ok %}
+      <section class="bg-[#F0FDF4] border-l-4 border-[#16A34A] p-5 rounded-r-lg flex items-center gap-4 shadow-sm">
+        <div class="bg-[#16A34A] text-white p-2 rounded-full shrink-0">
+          <span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+        </div>
+        <div>
+          <h3 class="text-headline-md font-headline-md text-[#15803D]">감지된 민감정보 없음</h3>
+          <p class="text-body-md font-body-md text-[#166534]">{{ masking_message }}</p>
+        </div>
+      </section>
+      {% else %}
+      <section class="bg-[#FFFBEB] border-l-4 border-[#B45309] p-5 rounded-r-lg flex items-center gap-4 shadow-sm">
+        <div class="bg-[#B45309] text-white p-2 rounded-full shrink-0">
+          <span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">privacy_tip</span>
+        </div>
+        <div>
+          <h3 class="text-headline-md font-headline-md text-[#92400E]">민감정보 열 제거됨</h3>
+          <p class="text-body-md font-body-md text-[#78350F]">{{ masking_message }}</p>
+        </div>
+      </section>
+      {% endif %}
+
+      <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl flex flex-col justify-between">
+          <span class="text-label-md font-label-md text-on-surface-variant">처리 사업 수</span>
+          <div class="flex items-end justify-between mt-2">
+            <span class="text-display font-display text-primary">{{ business_count }}개</span>
+            <span class="material-symbols-outlined text-outline">account_balance</span>
+          </div>
+        </div>
+        <div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl flex flex-col justify-between">
+          <span class="text-label-md font-label-md text-on-surface-variant">총 페이지 수</span>
+          <div class="flex items-end justify-between mt-2">
+            <span class="text-display font-display text-on-surface">{{ page_count }}p</span>
+            <span class="material-symbols-outlined text-outline">description</span>
+          </div>
+        </div>
+        <div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl flex flex-col justify-between {% if required_count > 0 %}border-b-4 border-error{% endif %}">
+          <div class="flex justify-between items-start gap-2">
+            <span class="text-label-md font-label-md text-on-surface-variant">검수필요</span>
+            {% if required_count > 0 %}
+            <span class="bg-error-container text-on-error-container text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0">확인 필요</span>
+            {% endif %}
+          </div>
+          <div class="flex items-end justify-between mt-2">
+            <span class="text-display font-display {% if required_count > 0 %}text-error{% else %}text-primary{% endif %}">{{ required_count }}건</span>
+            <span class="material-symbols-outlined {% if required_count > 0 %}text-error{% else %}text-outline{% endif %}">
+              {% if required_count > 0 %}priority_high{% else %}check_circle{% endif %}
+            </span>
+          </div>
+        </div>
+
+        {% if advisory_count > 0 %}
+        <div class="md:col-span-3 bg-amber-50 border border-amber-200 p-4 rounded-lg flex items-center gap-3">
+          <span class="material-symbols-outlined text-amber-700">info</span>
+          <p class="text-body-md text-amber-900">검수권장 {{ advisory_count }}건 — 참고용으로 확인해 주세요.</p>
+        </div>
+        {% endif %}
+
+        <div class="md:col-span-3 bg-surface-container-low p-4 rounded-lg border border-outline-variant">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="material-symbols-outlined text-on-surface-variant text-[18px]">receipt_long</span>
+            <h4 class="text-label-md font-label-md text-on-surface-variant">인식한 연체료 규정</h4>
+          </div>
+          <pre class="text-body-md text-on-surface-variant whitespace-pre-wrap font-sans m-0">{{ rules_summary }}</pre>
+        </div>
+
+        <div class="md:col-span-3 bg-surface-container-lowest border border-outline-variant p-4 rounded-lg">
+          <p class="text-label-md font-label-md text-on-surface-variant mb-1">생성 파일</p>
+          <p class="text-body-md text-on-surface">{% if output_format == 'hwp' %}hwp {{ hwp_count }}개{% else %}hwpx {{ hwpx_count }}개{% endif %}</p>
+        </div>
+        {% if hwp_conversion_note %}
+        <div class="md:col-span-3 bg-amber-50 border border-amber-200 p-4 rounded-lg flex items-start gap-3">
+          <span class="material-symbols-outlined text-amber-700 shrink-0">warning</span>
+          <div>
+            <p class="text-label-md font-label-md text-amber-900">hwp 변환 생략 — hwpx로 포함됨</p>
+            <p class="text-body-md text-amber-800 mt-1">{{ hwp_conversion_note }}</p>
+          </div>
+        </div>
+        {% endif %}
+      </section>
+
+      <section class="space-y-4">
+        <h3 class="text-headline-md font-headline-md text-on-surface px-1">상세 검수 항목</h3>
+        {% if not review_required and not review_advisory %}
+        <p class="text-primary text-body-lg bg-surface-container-low p-4 rounded-lg">검수필요 항목이 없습니다.</p>
+        {% else %}
+        <div class="space-y-3">
+          {% for item in review_required %}
+          <div class="bg-white border border-outline-variant rounded-lg p-4 flex flex-col gap-2">
+            <div class="flex items-start gap-4">
+              <span class="bg-error-container text-on-error-container px-2 py-1 rounded text-label-md font-label-md whitespace-nowrap shrink-0">검수필요</span>
+              <p class="text-body-md text-on-surface leading-relaxed">{{ item }}</p>
+            </div>
+          </div>
+          {% endfor %}
+          {% for item in review_advisory %}
+          <div class="bg-white border border-outline-variant rounded-lg p-4 flex flex-col gap-2">
+            <div class="flex items-start gap-4">
+              <span class="bg-amber-100 text-amber-800 border border-amber-200 px-2 py-1 rounded text-label-md font-label-md whitespace-nowrap shrink-0">검수권장</span>
+              <p class="text-body-md text-on-surface-variant leading-relaxed">{{ item }}</p>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </section>
+
+      <section class="bg-surface-container border border-outline-variant rounded-2xl p-8 text-center space-y-6">
+        <div class="mx-auto w-16 h-16 bg-primary-container text-on-primary-container rounded-full flex items-center justify-center">
+          <span class="material-symbols-outlined text-[32px]" style="font-variation-settings: 'FILL' 1;">folder_zip</span>
+        </div>
+        <div class="space-y-2">
+          <h3 class="text-headline-lg font-headline-lg text-on-surface">작성 결과물 준비 완료</h3>
+          <p class="text-body-md text-on-surface-variant">아래 버튼을 눌러 생성된 모든 문서를 한꺼번에 다운로드하세요.</p>
+        </div>
+        <a href="/download/{{ job_id }}"
+          class="w-full bg-primary text-on-primary text-headline-md font-headline-md py-4 rounded-xl flex items-center justify-center gap-3 hover:bg-on-primary-fixed-variant transition-all active:scale-[0.98] shadow-lg">
+          <span class="material-symbols-outlined">download</span>
+          결과 zip 다운로드
+        </a>
+        <div class="pt-6 border-t border-outline-variant text-left space-y-4">
+          <div class="flex items-start gap-2">
+            <span class="material-symbols-outlined text-primary text-[20px] shrink-0">info</span>
+            <div class="space-y-1">
+              <p class="text-label-md font-label-md text-on-surface font-bold">Zip 파일 구성</p>
+              <ul class="text-body-md text-on-surface-variant list-disc list-inside space-y-1">
+                <li>사업별 수입지출내역서 (.hwp)</li>
+                <li>검수목록.txt</li>
+                <li>연체료규정_추출.json</li>
+                <li>사업개요.txt</li>
+                <li>업로드한 연체료 규정 이미지</li>
+              </ul>
+            </div>
+          </div>
+          <div class="bg-error-container text-on-error-container p-3 rounded-lg flex items-center gap-3">
+            <span class="material-symbols-outlined text-[20px] progress-pulse">timer</span>
+            <p class="text-label-md font-label-md">보안을 위해 다운로드 링크는 약 10분 후 만료됩니다.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

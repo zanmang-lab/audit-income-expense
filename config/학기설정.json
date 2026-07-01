@@ -1,0 +1,53 @@
+{
+  "_설명": "서버·CLI 전용 내부 설정. 연체료 일수 계산용 물품 단가·사물함 비고 문구. 웹 사용자는 업로드하지 않음.",
+
+  "label": "2026-1학기",
+  "ledger_sheet": "DATA (2)",
+
+  "businesses": {
+    "0": { "name": "총학생회비", "role": "student_fee" },
+    "1": { "name": "1학기 온라인 사물함 배부 사업", "role": "locker" },
+    "2": { "name": "1학기 대면 사물함 배부 사업", "role": "locker" },
+    "3": { "name": "1학기 물품 대여 사업", "role": "rental" },
+    "4": { "name": "봄 축제", "role": "general" },
+    "5": { "name": "중간고사 간식행사", "role": "general" },
+    "6": { "name": "시험기간 인스타 스토리 인증 이벤트", "role": "general" },
+    "7": { "name": "대동제", "role": "general" },
+    "8": { "name": "과일 화채 행사", "role": "general" },
+    "9": { "name": "중앙도서관 사물함 관리 운영", "role": "locker" },
+    "10": { "name": "기말고사 간식행사", "role": "general" },
+    "98": { "name": "관리운영비", "role": "general" },
+    "99": { "name": "기타", "role": "general" }
+  },
+
+  "locker": {
+    "deposit_remark": "전자 사물함은 대여비 4,000원, 일반 사물함은 대여비 2,000원",
+    "refund_fee_advisory": "환불 단가는 수수료 포함 합본금액. 양식에 맞게 원금/수수료 분리 검토."
+  },
+
+  "rental": {
+    "film_fee_per_sheet": 1000
+  },
+
+  "overdue_rules": {
+    "default_per_day": 2000,
+    "categories": [
+      { "per_day": 1000, "keywords": ["보조배터리"] },
+      { "per_day": 2000, "keywords": ["돗자리(소)"] },
+      {
+        "per_day": 3000,
+        "keywords": [
+          "폴라로이드",
+          "앰프",
+          "듀라테이블",
+          "의자",
+          "카트",
+          "피크닉",
+          "돗자리",
+          "캐노피",
+          "빔프로젝터"
+        ]
+      }
+    ]
+  }
+}

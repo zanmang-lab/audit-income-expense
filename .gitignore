@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+.venv/
+venv/
+
+# 비밀·로컬 설정
+.env
+.env.local
+
+# 생성물
+output/*
+!output/.gitkeep
+
+# 웹 임시
+web/_tmp/
+
+# 로컬 입력 (실제 학기 데이터 — 필요 시 input/에 직접 배치)
+input/*
+!input/.gitkeep
+
+# 프로젝트 루트에 둔 실제 엑셀 (실수 커밋 방지)
+/*.xlsx
+
+# 양식 원본 (저작권·학기별 상이 — 저장소에 올리지 않음)
+templates/*.hwp
+templates/*.hwpx
+
+# 자동 생성 예시 엑셀
+examples/장부_예시.xlsx
+examples/연체료목록_예시.xlsx
+examples/환불자목록_예시.xlsx
+
+# Office 잠금 파일
+~$*
+
+# OS
+.DS_Store
+Thumbs.db

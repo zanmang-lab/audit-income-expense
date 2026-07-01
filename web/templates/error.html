@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html class="light" lang="ko">
+<head>
+  {% set page_title = "오류" %}
+  {% include "includes/head.html" %}
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col">
+  {% include "includes/header.html" %}
+
+  <main class="flex-grow flex flex-col items-center px-4 py-12 sm:py-16">
+    <div class="w-full max-w-[800px] flex flex-col items-center text-center">
+      <div class="mb-8 relative">
+        <div class="w-32 h-32 rounded-full bg-surface-container flex items-center justify-center relative overflow-hidden">
+          <span class="material-symbols-outlined text-primary text-[64px]" style="font-variation-settings: 'wght' 300;">{{ error_icon }}</span>
+        </div>
+        <div class="absolute -bottom-1 -right-1 w-10 h-10 rounded-full bg-error-container border-4 border-surface flex items-center justify-center">
+          <span class="material-symbols-outlined text-error text-[20px]" style="font-variation-settings: 'FILL' 1;">warning</span>
+        </div>
+      </div>
+
+      <div class="space-y-4 mb-10 max-w-[560px]">
+        <h1 class="text-headline-lg font-headline-lg text-on-surface">{{ error_title }}</h1>
+        <p class="text-body-lg font-body-lg text-on-surface-variant whitespace-pre-line">{{ error_message }}</p>
+      </div>
+
+      <div class="w-full max-w-[400px] space-y-4">
+        <a href="/"
+          class="w-full py-4 bg-primary text-on-primary rounded-lg text-label-md font-label-md hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-2 shadow-sm">
+          <span class="material-symbols-outlined">upload</span>
+          다시 업로드
+        </a>
+      </div>
+
+      {% if show_ocr_tips %}
+      <div class="mt-10 w-full bg-surface-container-low border border-outline-variant rounded-xl p-6 text-left">
+        <h3 class="text-label-md font-label-md text-on-surface-variant mb-4 flex items-center gap-2">
+          <span class="material-symbols-outlined text-[18px]">lightbulb</span>
+          더 정확한 인식을 위한 팁
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="flex items-start gap-3">
+            <span class="material-symbols-outlined text-primary shrink-0">check_circle</span>
+            <div>
+              <p class="text-label-md font-label-md text-on-surface">수평 맞추기</p>
+              <p class="text-body-md text-on-surface-variant">표가 기울어지지 않게 정면에서 촬영하세요.</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="material-symbols-outlined text-primary shrink-0">check_circle</span>
+            <div>
+              <p class="text-label-md font-label-md text-on-surface">밝은 조명</p>
+              <p class="text-body-md text-on-surface-variant">그림자나 빛 반사가 없는 밝은 곳에서 촬영하세요.</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-3 md:col-span-2">
+            <span class="material-symbols-outlined text-primary shrink-0">check_circle</span>
+            <div>
+              <p class="text-label-md font-label-md text-on-surface">형식 예시</p>
+              <p class="text-body-md text-on-surface-variant"><code class="bg-white px-1 rounded">보조배터리 — 1,000원/일</code>처럼 물품명과 1일 단가가 보이게 해 주세요.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </main>
+
+  <footer class="w-full py-4 bg-[#FFFBEB] border-t border-[#B45309]/30 border-l-4 border-l-[#B45309] mt-auto">
+    <div class="max-w-[800px] mx-auto px-6 flex items-center gap-3">
+      <span class="material-symbols-outlined text-[#B45309] shrink-0">privacy_tip</span>
+      <p class="text-[13px] font-medium text-[#B45309]">환불자 목록은 전화번호·계좌번호 없이 이름·금액·사유만 포함해 주세요.</p>
+    </div>
+  </footer>
+</body>
+</html>

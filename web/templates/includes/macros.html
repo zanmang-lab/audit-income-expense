@@ -1,0 +1,25 @@
+{% macro file_zone(field_id, field_name, accept, icon, placeholder, hint='', required=true) %}
+<div class="file-drop-zone border-2 border-dashed border-outline-variant rounded-lg p-6 sm:p-8 flex flex-col items-center justify-center bg-surface hover:border-primary transition-all cursor-pointer text-center"
+     data-dropzone-for="{{ field_id }}">
+  <span class="material-symbols-outlined text-outline text-4xl mb-2">{{ icon }}</span>
+  <p class="font-label-md text-on-surface-variant mb-1 zone-label">{{ placeholder }}</p>
+  {% if hint %}
+  <p class="text-[10px] text-outline italic">{{ hint }}</p>
+  {% endif %}
+  <input id="{{ field_id }}" name="{{ field_name }}" type="file" accept="{{ accept }}"
+         class="hidden" {% if required %}required{% endif %}/>
+</div>
+{% endmacro %}
+
+{% macro file_zone_compact(field_id, field_name, accept, icon, placeholder, required=true) %}
+<div class="file-drop-zone border-2 border-dashed border-outline-variant rounded-lg p-6 flex items-center justify-between bg-surface hover:border-primary transition-all cursor-pointer"
+     data-dropzone-for="{{ field_id }}">
+  <div class="flex items-center gap-3 min-w-0">
+    <span class="material-symbols-outlined text-primary shrink-0">{{ icon }}</span>
+    <span class="font-label-md text-on-surface-variant truncate zone-label">{{ placeholder }}</span>
+  </div>
+  <span class="text-xs bg-surface-container-high px-2 py-1 rounded shrink-0">XLSX</span>
+  <input id="{{ field_id }}" name="{{ field_name }}" type="file" accept="{{ accept }}"
+         class="hidden" {% if required %}required{% endif %}/>
+</div>
+{% endmacro %}

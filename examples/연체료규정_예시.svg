@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="280" font-family="sans-serif">
+  <rect width="100%" height="100%" fill="#fafafa" stroke="#ccc"/>
+  <text x="20" y="32" font-size="16" font-weight="bold">연체료 규정 예시 (이미지로 업로드)</text>
+  <text x="20" y="58" font-size="12" fill="#444">물품별 1일 단가 표를 캡처·스캔하여 올려 주세요.</text>
+  <rect x="20" y="75" width="480" height="120" fill="#fff" stroke="#999"/>
+  <text x="35" y="100" font-size="13">보조배터리 — 1,000원/일</text>
+  <text x="35" y="125" font-size="13">우산, 농구공, 드릴 — 2,000원/일</text>
+  <text x="35" y="150" font-size="13">듀라테이블(대), 쇼핑카트, 빔프로젝터 — 3,000원/일</text>
+  <text x="35" y="175" font-size="13">그 외 물품 — 2,000원/일 (기본)</text>
+  <text x="20" y="230" font-size="11" fill="#666">※ 실제 학기 규정표 이미지를 사용하세요. 이 파일은 형식 참고용입니다.</text>
+</svg>

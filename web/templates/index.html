@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html class="light" lang="ko">
+<head>
+  {% set page_title = "업로드" %}
+  {% include "includes/head.html" %}
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col">
+  {% include "includes/header.html" %}
+
+  <main class="flex-1 px-4 py-8 md:px-6 max-w-[800px] mx-auto w-full">
+    <section class="mb-8">
+      <h2 class="text-display font-display text-on-surface mb-2">수입지출내역서 자동 작성</h2>
+      <p class="text-body-lg font-body-lg text-on-surface-variant">
+        장부·연체료·환불 목록과 양식을 올리면 사업별 수입지출내역서를 자동 생성합니다.
+      </p>
+    </section>
+
+    <div class="bg-[#FFFBEB] border-l-4 border-[#B45309] p-4 mb-8 flex items-start gap-3 rounded-r-lg" role="alert">
+      <span class="material-symbols-outlined text-[#B45309] shrink-0">warning</span>
+      <p class="text-sm text-[#B45309] font-medium leading-relaxed">
+        환불자 목록에서 전화번호·계좌번호 열을 삭제하고 올려 주세요.
+        서버가 자동으로 제거하지만, 업로드 전 직접 삭제하는 것을 권장합니다.
+      </p>
+    </div>
+
+    <form action="/generate" method="post" enctype="multipart/form-data" class="space-y-8" id="upload-form">
+      {% from "includes/macros.html" import file_zone, file_zone_compact %}
+
+      <!-- 1. 양식 -->
+      <div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl">
+        <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+          <label for="template" class="text-headline-md font-headline-md text-on-surface flex items-center gap-2">
+            1. 수입지출 양식
+            <span class="text-error text-xs font-label-md px-1.5 py-0.5 bg-error-container rounded">필수</span>
+          </label>
+          <span class="text-xs text-on-surface-variant font-label-md">.hwp, .hwpx</span>
+        </div>
+        {{ file_zone("template", "template", ".hwp,.hwpx", "upload_file", "파일을 드래그하거나 클릭하여 업로드", "hwpx 형식을 권장합니다") }}
+        <p class="mt-3 text-xs text-on-surface-variant">hwp는 서버에서 hwpx로 변환합니다(한글 설치 필요).</p>
+      </div>
+
+      <!-- 2. 사업개요 -->
+      <div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl">
+        <label for="business_overview" class="text-headline-md font-headline-md text-on-surface block mb-4">
+          2. 사업개요
+        </label>
+        <textarea id="business_overview" name="business_overview" required
+          class="w-full min-h-[120px] p-4 border border-outline-variant rounded-lg focus:border-primary focus:ring-1 focus:ring-primary-container outline-none text-body-md transition-all">{{ default_overview }}</textarea>
+        <p class="mt-2 text-xs text-on-surface-variant">
+          한 줄에 <code class="bg-surface-container-high px-1 rounded">번호. 사업명</code> 형식.
+          사업명에 <code class="bg-surface-container-high px-1 rounded">사물함</code>·<code class="bg-surface-container-high px-1 rounded">대여</code>·<code class="bg-surface-container-high px-1 rounded">총학</code> 등이 있으면 비고 규칙이 자동 적용됩니다.
+        </p>
+      </div>
+
+      <!-- 3. 연체료 규정 -->
+      <div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl">
+        <label for="overdue_rules_image" class="text-headline-md font-headline-md text-on-surface block mb-4">
+          3. 연체료 규정 (이미지)
+        </label>
+        {{ file_zone("overdue_rules_image", "overdue_rules_image", "image/*", "image", "계산 규칙이 명시된 이미지를 업로드하세요") }}
+        <p class="mt-3 text-xs text-primary font-medium flex items-center gap-1">
+          <span class="material-symbols-outlined text-sm">info</span>
+          선명한 사진·스캔을 올려 주세요. <code>1DAY ₩1,000</code> 표 형식과 <code>물품명 — 1,000원/일</code> 목록 형식 모두 인식합니다.
+        </p>
+      </div>
+
+      <!-- 4. 장부 -->
+      <div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl">
+        <label for="ledger" class="text-headline-md font-headline-md text-on-surface block mb-4">4. 장부 (.xlsx)</label>
+        {{ file_zone_compact("ledger", "ledger", ".xlsx", "table_view", "엑셀 파일을 선택하세요") }}
+        {{ examples.ledger | safe }}
+      </div>
+
+      <!-- 5. 연체료 목록 -->
+      <div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl">
+        <label for="overdue" class="text-headline-md font-headline-md text-on-surface block mb-4">5. 연체료 목록 (.xlsx)</label>
+        {{ file_zone_compact("overdue", "overdue", ".xlsx", "assignment_late", "연체 내역 엑셀 업로드") }}
+        {{ examples.overdue | safe }}
+      </div>
+
+      <!-- 6. 환불자 목록 -->
+      <div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl">
+        <label for="refund" class="text-headline-md font-headline-md text-on-surface block mb-4">6. 환불자 목록 (.xlsx)</label>
+        {{ file_zone_compact("refund", "refund", ".xlsx", "payments", "환불 명단 엑셀 업로드") }}
+        <div class="mt-4 flex items-center gap-2 text-error font-label-md text-xs">
+          <span class="material-symbols-outlined text-sm">privacy_tip</span>
+          개인정보(전화번호·계좌번호)는 제외 후 업로드를 권장합니다.
+        </div>
+        {{ examples.refund | safe }}
+      </div>
+
+      <div class="pt-4 flex justify-center">
+        <button type="submit" id="submit-btn"
+          class="w-full md:w-auto px-12 py-4 bg-primary text-on-primary rounded-full text-headline-md font-headline-md hover:bg-on-primary-fixed-variant transition-all shadow-sm active:scale-95 flex items-center justify-center gap-2">
+          <span class="material-symbols-outlined" id="submit-icon">auto_fix_high</span>
+          <span id="submit-label">생성하기</span>
+        </button>
+      </div>
+    </form>
+
+    <footer class="mt-16 text-center text-on-surface-variant border-t border-outline-variant pt-8 mb-8">
+      <p class="text-label-md font-label-md">업로드된 파일은 처리 후 약 10분 내 서버에서 삭제됩니다.</p>
+    </footer>
+  </main>
+
+  <script>
+    document.querySelectorAll('.file-drop-zone').forEach(zone => {
+      const input = zone.querySelector('input[type="file"]');
+      const label = zone.querySelector('.zone-label');
+      const defaultText = label ? label.textContent : '';
+
+      zone.addEventListener('click', (e) => {
+        if (e.target !== input) input.click();
+      });
+
+      zone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        zone.classList.add('drag-over');
+      });
+
+      ['dragleave', 'drop'].forEach(eventName => {
+        zone.addEventListener(eventName, (e) => {
+          if (eventName === 'drop') {
+            e.preventDefault();
+            if (e.dataTransfer.files.length) {
+              input.files = e.dataTransfer.files;
+              input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+          }
+          zone.classList.remove('drag-over');
+        });
+      });
+
+      input.addEventListener('change', () => {
+        if (input.files.length > 0 && label) {
+          label.textContent = '업로드됨: ' + input.files[0].name;
+          zone.classList.add('border-primary', 'bg-surface-container-low');
+        } else if (label) {
+          label.textContent = defaultText;
+          zone.classList.remove('border-primary', 'bg-surface-container-low');
+        }
+      });
+    });
+
+    document.getElementById('upload-form').addEventListener('submit', () => {
+      const btn = document.getElementById('submit-btn');
+      const icon = document.getElementById('submit-icon');
+      const label = document.getElementById('submit-label');
+      btn.disabled = true;
+      btn.classList.add('opacity-80', 'cursor-wait');
+      icon.textContent = 'sync';
+      icon.classList.add('animate-spin');
+      label.textContent = '처리 중… 잠시만 기다려 주세요';
+    });
+  </script>
+</body>
+</html>
