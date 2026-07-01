@@ -60,13 +60,16 @@
 
       <!-- 3. 연체료 규정 -->
       <div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl">
-        <label for="overdue_rules_image" class="text-headline-md font-headline-md text-on-surface block mb-4">
-          3. 연체료 규정 (이미지)
+        <label for="overdue_rules_text" class="text-headline-md font-headline-md text-on-surface block mb-4">
+          3. 연체료 규정
+          <span class="text-error text-xs font-label-md px-1.5 py-0.5 bg-error-container rounded ml-2">필수</span>
         </label>
-        {{ file_zone("overdue_rules_image", "overdue_rules_image", "image/*", "image", "계산 규칙이 명시된 이미지를 업로드하세요") }}
-        <p class="mt-3 text-xs text-primary font-medium flex items-center gap-1">
-          <span class="material-symbols-outlined text-sm">info</span>
-          선명한 사진·스캔을 올려 주세요. <code>1DAY ₩1,000</code> 표 형식과 <code>물품명 — 1,000원/일</code> 목록 형식 모두 인식합니다.
+        <textarea id="overdue_rules_text" name="overdue_rules_text" required
+          class="w-full min-h-[140px] p-4 border border-outline-variant rounded-lg focus:border-primary focus:ring-1 focus:ring-primary-container outline-none text-body-md font-mono text-sm transition-all">{{ default_overdue_rules }}</textarea>
+        <p class="mt-3 text-xs text-on-surface-variant">
+          한 줄에 <code class="bg-surface-container-high px-1 rounded">1DAY ₩금액: 물품명</code> 형식.
+          <code class="bg-surface-container-high px-1 rounded">그 외 물품</code> 줄은 기본 단가로 적용됩니다.
+          물품이 여러 개면 쉼표로 구분하세요.
         </p>
       </div>
 

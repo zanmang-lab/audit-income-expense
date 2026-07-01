@@ -212,19 +212,72 @@ def _parse_table_fee_rules(lines: list[str]) -> OverdueRulesConfig | None:
     return OverdueRulesConfig(default_per_day=default_per_day, categories=categories)
 
 
+def _parse_day_fee_colon_rules(lines: list[str]) -> OverdueRulesConfig | None:
+    """
+    '1DAY ₩1,000: 보조배터리' / '1DAY ₩2,000: 그 외 물품' 형식.
+    금액과 물품명이 한 줄에 콜론으로 구분된 입력.
+    """
+    default_per_day = 2000
+    by_day: dict[int, list[str]] = {}
+    parsed_any = False
+
+    for line in lines:
+        if not line or line.startswith("※"):
+            continue
+        if "연체료 규정" in line and "물품별" in line:
+            continue
+
+        amount = _parse_fee_amount(line)
+        if not amount:
+            continue
+
+        parsed_any = True
+        rest = line
+        for sep in (":", "："):
+            if sep in line:
+                rest = line.split(sep, 1)[1].strip()
+                break
+
+        if _is_default_keyword(rest):
+            default_per_day = amount
+            continue
+
+        keywords = _split_keywords(rest)
+        if not keywords:
+            continue
+
+        bucket = by_day.setdefault(amount, [])
+        for kw in keywords:
+            if kw not in bucket:
+                bucket.append(kw)
+
+    if not parsed_any:
+        return None
+    if not by_day:
+        return OverdueRulesConfig(default_per_day=default_per_day, categories=[])
+
+    return OverdueRulesConfig(
+        default_per_day=default_per_day,
+        categories=[
+            CategoryRule(per_day=per_day, keywords=keywords)
+            for per_day, keywords in sorted(by_day.items(), key=lambda x: -x[0])
+        ],
+    )
+
+
 def parse_overdue_rules_text(text: str) -> OverdueRulesConfig:
-    """규정표 텍스트(OCR·SVG)에서 물품별 1일 단가를 추출한다."""
+    """규정표 텍스트(OCR·SVG·직접 입력)에서 물품별 1일 단가를 추출한다."""
     normalized = _normalize_ocr_text(text)
     lines = [_strip_markup(raw.strip()) for raw in normalized.splitlines() if raw.strip()]
 
-    for parser in (_parse_inline_rules, _parse_table_fee_rules):
+    for parser in (_parse_day_fee_colon_rules, _parse_inline_rules, _parse_table_fee_rules):
         result = parser(lines)
         if result is not None:
             return result
 
     raise ValueError(
         "연체료 규정 표에서 1일 단가를 찾지 못했습니다. "
-        "'1DAY ₩1,000' 형식 표 또는 '물품명 — 1,000원/일' 형식이 보이는지 확인해 주세요."
+        "'1DAY ₩1,000: 물품명' 또는 '물품명 — 1,000원/일' 형식인지 확인해 주세요."
     )
 
 

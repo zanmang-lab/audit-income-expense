@@ -24,12 +24,20 @@ TEMPLATE_EXTENSIONS = {".hwp", ".hwpx"}
 _LINE_MAPPING = re.compile(r"^\s*(\d+)\s*[:\.\|]\s*(.+?)\s*$")
 
 
+def default_overdue_rules_placeholder() -> str:
+    """폼 기본값 — 연체료 규정 입력 예시."""
+    return (
+        "1DAY ₩1,000: 보조배터리\n"
+        "1DAY ₩2,000: 그 외 물품\n"
+        "1DAY ₩3,000: 폴라로이드, 앰프, 듀라테이블, 의자, 카트, 피크닉용품, 캐노피, 빔프로젝터"
+    )
+
+
 @dataclass
 class UploadConfig:
     semester: SemesterConfig
     business_overview: str
-    overdue_rules_image_bytes: bytes
-    overdue_rules_image_name: str
+    overdue_rules_text: str
     template_hwpx_path: Path
     overdue_rules_summary: str = ""
 

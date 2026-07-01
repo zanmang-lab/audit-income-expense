@@ -136,9 +136,8 @@ def run_pipeline_from_uploads(
     overview_path = output_dir / "사업개요.txt"
     overview_path.write_text(upload.business_overview, encoding="utf-8")
 
-    rules_image_name = f"연체료규정{upload.overdue_rules_image_name}"
-    rules_image_path = output_dir / rules_image_name
-    rules_image_path.write_bytes(upload.overdue_rules_image_bytes)
+    rules_text_path = output_dir / "연체료규정.txt"
+    rules_text_path.write_text(upload.overdue_rules_text, encoding="utf-8")
 
     zip_path = work_dir / "수입지출내역서_결과.zip"
 
@@ -148,7 +147,7 @@ def run_pipeline_from_uploads(
             zf.write(rules_extract_path, "연체료규정_추출.json")
             if upload.business_overview.strip():
                 zf.write(overview_path, "사업개요.txt")
-            zf.write(rules_image_path, rules_image_name)
+            zf.write(rules_text_path, "연체료규정.txt")
             for hp in zip_doc_paths:
                 zf.write(hp, Path(hp).name)
 
@@ -162,7 +161,7 @@ def run_pipeline_from_uploads(
         Path(hp).unlink(missing_ok=True)
     review_path.unlink(missing_ok=True)
     overview_path.unlink(missing_ok=True)
-    rules_image_path.unlink(missing_ok=True)
+    rules_text_path.unlink(missing_ok=True)
     try:
         output_dir.rmdir()
     except OSError:

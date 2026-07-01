@@ -22,7 +22,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from src.parse_overdue_rules_image import (
     PARSER_BUILD_ID,
-    parse_overdue_rules_image,
+    parse_overdue_rules_text,
     rules_to_summary,
 )
 from src.export_hwp import hwp_conversion_available
@@ -35,8 +35,8 @@ from web.semester_inputs import (
     UploadConfig,
     build_semester_from_overview,
     default_business_overview_placeholder,
+    default_overdue_rules_placeholder,
     resolve_template,
-    validate_image,
 )
 
 TEMP_ROOT = PROJECT_ROOT / "web" / "_tmp"
@@ -113,9 +113,9 @@ def _wants_html(request: Request) -> bool:
 
 def _error_page_context(detail: str, status_code: int) -> dict:
     detail_str = str(detail)
-    show_ocr = "연체료 규정" in detail_str or "이미지" in detail_str
+    show_ocr = "연체료 규정" in detail_str
     if show_ocr:
-        title = "연체료 규정 이미지를 읽지 못했습니다"
+        title = "연체료 규정을 읽지 못했습니다"
         icon = "document_scanner"
     elif "xlsx" in detail_str.lower() or "엑셀" in detail_str:
         title = "엑셀 파일을 읽지 못했습니다"
@@ -213,6 +213,7 @@ async def index(request: Request) -> HTMLResponse:
         "index.html",
         {
             "default_overview": default_business_overview_placeholder(),
+            "default_overdue_rules": default_overdue_rules_placeholder(),
             "examples": upload_form_examples_html(),
             "hwp_supported": hwp_conversion_available(),
         },
@@ -227,7 +228,7 @@ async def generate(
     overdue: UploadFile = File(...),
     refund: UploadFile = File(...),
     template: UploadFile = File(...),
-    overdue_rules_image: UploadFile = File(...),
+    overdue_rules_text: str = Form(...),
 ) -> HTMLResponse:
     _cleanup_expired_jobs()
 
@@ -239,21 +240,14 @@ async def generate(
         raise HTTPException(400, "수입지출 양식 파일을 업로드해 주세요.")
     template_bytes = await _read_bytes(template, "수입지출양식")
 
-    if not overdue_rules_image.filename:
-        raise HTTPException(400, "연체료 규정 이미지를 업로드해 주세요.")
-    rules_image_bytes = await _read_bytes(
-        overdue_rules_image, "연체료규정이미지", max_bytes=10 * 1024 * 1024
-    )
-
-    try:
-        image_ext = validate_image(overdue_rules_image.filename, rules_image_bytes)
-    except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
+    rules_text = overdue_rules_text.strip()
+    if not rules_text:
+        raise HTTPException(400, "연체료 규정을 입력해 주세요.")
 
     try:
         overdue_rules = run_stage(
-            "연체료 규정 이미지 인식",
-            lambda: parse_overdue_rules_image(rules_image_bytes, overdue_rules_image.filename),
+            "연체료 규정 해석",
+            lambda: parse_overdue_rules_text(rules_text),
         )
         rules_summary = rules_to_summary(overdue_rules)
     except PipelineError as exc:
@@ -300,8 +294,7 @@ async def generate(
     upload_config = UploadConfig(
         semester=semester,
         business_overview=overview_text,
-        overdue_rules_image_bytes=rules_image_bytes,
-        overdue_rules_image_name=image_ext,
+        overdue_rules_text=rules_text,
         template_hwpx_path=template_hwpx,
         overdue_rules_summary=rules_summary,
     )
