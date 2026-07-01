@@ -173,9 +173,23 @@ async def _read_bytes(upload: UploadFile, field_name: str, max_bytes: int = MAX_
     return data
 
 
+def _ocr_engine_ready() -> bool:
+    try:
+        from src.parse_overdue_rules_image import _get_rapid_ocr
+
+        _get_rapid_ocr()
+        return True
+    except Exception:
+        return False
+
+
 @app.on_event("startup")
 async def startup_prepare_examples() -> None:
     ensure_example_files(EXAMPLES_DIR)
+    if _ocr_engine_ready():
+        logger.info("OCR 엔진 준비 완료")
+    else:
+        logger.warning("OCR 엔진을 로드하지 못했습니다. 연체료 이미지 인식이 실패할 수 있습니다.")
 
 
 @app.get("/api/health")
@@ -189,6 +203,7 @@ def health_check():
         "supports_table_format": True,
         "app": "upload-web",
         "hwp_supported": hwp_conversion_available(),
+        "ocr_available": _ocr_engine_ready(),
         "public_url": os.environ.get("RENDER_EXTERNAL_URL"),
     }
 

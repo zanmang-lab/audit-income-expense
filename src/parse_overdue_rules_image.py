@@ -256,6 +256,7 @@ def _get_rapid_ocr():
     if _rapid_ocr is not None:
         return _rapid_ocr
 
+    errors: list[str] = []
     try:
         from rapidocr import EngineType, LangRec, RapidOCR
         from rapidocr.utils.typings import ModelType, OCRVersion
@@ -269,13 +270,18 @@ def _get_rapid_ocr():
             }
         )
         return _rapid_ocr
-    except ImportError:
-        pass
+    except Exception as exc:
+        errors.append(f"rapidocr: {exc}")
 
-    from rapidocr_onnxruntime import RapidOCR as LegacyRapidOCR
+    try:
+        from rapidocr_onnxruntime import RapidOCR as LegacyRapidOCR
 
-    _rapid_ocr = LegacyRapidOCR()
-    return _rapid_ocr
+        _rapid_ocr = LegacyRapidOCR()
+        return _rapid_ocr
+    except Exception as exc:
+        errors.append(f"rapidocr_onnxruntime: {exc}")
+
+    raise ImportError(" / ".join(errors))
 
 
 def extract_text_with_rapidocr(data: bytes) -> str:
@@ -402,8 +408,8 @@ def parse_overdue_rules_image(data: bytes, filename: str) -> OverdueRulesConfig:
                 return parse_overdue_rules_text(text)
             except ValueError as exc:
                 errors.append(f"{name} 텍스트 파싱 실패: {exc}")
-        except ImportError:
-            errors.append(f"{name} 미설치")
+        except ImportError as exc:
+            errors.append(f"{name} 미설치: {exc}")
         except Exception as exc:
             errors.append(f"{name} 실패: {exc}")
 
