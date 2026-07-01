@@ -87,7 +87,7 @@ python -m src.main
 1DAY ₩3,000: 폴라로이드, 앰프, 듀라테이블
 ```
 
-### 기타 오류
+### `pyhwpx` / HWP 변환 오류
 ```bat
 pip install "numpy<2"
 ```
