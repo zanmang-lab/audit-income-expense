@@ -25,6 +25,7 @@ from src.parse_overdue_rules_image import (
     parse_overdue_rules_image,
     rules_to_summary,
 )
+from src.export_hwp import hwp_conversion_available
 from web.errors import PipelineError, format_error_detail, run_stage
 from web.masking import mask_refund_workbook
 from web.runner import PipelineResult, run_pipeline_from_uploads
@@ -180,11 +181,15 @@ async def startup_prepare_examples() -> None:
 @app.get("/api/health")
 def health_check():
     """실행 중인 서버가 최신 연체료 파서를 쓰는지 확인."""
+    import os
+
     return {
         "status": "ok",
         "parser_build": PARSER_BUILD_ID,
         "supports_table_format": True,
         "app": "upload-web",
+        "hwp_supported": hwp_conversion_available(),
+        "public_url": os.environ.get("RENDER_EXTERNAL_URL"),
     }
 
 
@@ -197,6 +202,7 @@ async def index(request: Request) -> HTMLResponse:
         {
             "default_overview": default_business_overview_placeholder(),
             "examples": upload_form_examples_html(),
+            "hwp_supported": hwp_conversion_available(),
         },
     )
 

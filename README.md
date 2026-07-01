@@ -16,7 +16,18 @@
 
 > 32비트 Python에서도 동작하지만, OCR·한글 연동은 64비트 환경을 권장합니다.
 
-## 빠른 시작 (웹)
+## 클라우드 배포 (공개 URL)
+
+다른 사람이 **주소만 입력**해 쓰려면 [Render](https://render.com) 등에 배포합니다.  
+자세한 단계: **[docs/DEPLOY.md](docs/DEPLOY.md)**
+
+1. Render 가입 → GitHub 연동
+2. **New Blueprint** → `zanmang-lab/audit-income-expense` 선택
+3. 배포 완료 후 `https://audit-income-expense.onrender.com` 형태 URL 사용
+
+> 클라우드(Linux)에서는 **hwpx만** 지원합니다. HWP 변환은 Windows 로컬(`run_web.bat`)에서만 됩니다.
+
+## 빠른 시작 (로컬 Windows)
 
 ```bat
 git clone https://github.com/<사용자명>/<저장소명>.git

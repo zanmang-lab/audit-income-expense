@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 
@@ -9,7 +10,17 @@ class HwpConversionError(RuntimeError):
     pass
 
 
+def hwp_conversion_available() -> bool:
+    """Windows + pyhwpx + 한글 환경에서만 True."""
+    return sys.platform == "win32"
+
+
 def _import_hwp_class():
+    if not hwp_conversion_available():
+        raise HwpConversionError(
+            "이 서버는 Linux 클라우드 환경입니다. hwp 변환은 지원하지 않습니다. "
+            "hwpx 양식을 업로드하고, 결과 hwpx를 한글에서 hwp로 저장해 주세요."
+        )
     try:
         from pyhwpx import Hwp
 

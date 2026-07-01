@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: audit-income-expense
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"

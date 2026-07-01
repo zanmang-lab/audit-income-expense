@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from src.config_gen import parse_business_mapping_json
-from src.export_hwp import HwpConversionError, convert_hwp_to_hwpx
+from src.export_hwp import HwpConversionError, convert_hwp_to_hwpx, hwp_conversion_available
 from src.semester_config import (
     DEFAULT_FILM_FEE_PER_SHEET,
     DEFAULT_LABEL,
@@ -61,6 +61,12 @@ def resolve_template(
         if not template_bytes.startswith(b"PK"):
             raise ValueError("올바른 hwpx 형식이 아닙니다.")
         return upload_path
+
+    if not hwp_conversion_available():
+        raise ValueError(
+            "온라인 서버에서는 hwpx 양식만 업로드할 수 있습니다. "
+            "한글에서 '다른 이름으로 저장 → hwpx' 후 다시 업로드해 주세요."
+        )
 
     hwpx_path = work_dir / "template.hwpx"
     try:

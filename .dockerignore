@@ -1,0 +1,13 @@
+.git
+.github
+__pycache__
+*.py[cod]
+.venv
+venv
+.env
+web/_tmp
+output
+input
+*.xlsx
+templates/*.hwp
+templates/*.hwpx
