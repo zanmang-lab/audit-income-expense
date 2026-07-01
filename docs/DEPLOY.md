@@ -2,13 +2,40 @@
 
 GitHub 저장소를 **Render**에 연결하면 `https://xxxx.onrender.com` 형태의 주소로 누구나 접속할 수 있습니다.
 
-## 1. Render에서 배포 (권장, 무료 플랜 가능)
+## 1. Render에서 배포 (권장)
+
+### Blueprint (자동)
 
 1. [Render](https://render.com) 가입 → **GitHub 연동**
-2. **New +** → **Blueprint** 선택
-3. 저장소 `zanmang-lab/audit-income-expense` 연결
-4. `render.yaml`이 자동 인식됨 → **Apply**
-5. 배포 완료 후 표시되는 URL 접속 (예: `https://audit-income-expense.onrender.com`)
+2. [New Blueprint](https://dashboard.render.com/blueprint/new) → `zanmang-lab/audit-income-expense`
+3. **Apply** → 배포 로그에서 **Live** 될 때까지 대기 (5~10분)
+4. 대시보드에 표시된 URL로 접속 (예: `https://audit-income-expense.onrender.com`)
+
+### 수동 생성 (Blueprint가 안 될 때)
+
+1. **New +** → **Web Service**
+2. 저장소 `audit-income-expense` 연결
+3. 설정:
+   - **Language**: Python 3
+   - **Build Command**: `pip install --upgrade pip && pip install -r requirements-cloud.txt`
+   - **Start Command**: `python -m uvicorn web.app:app --host 0.0.0.0 --port $PORT`
+   - **Health Check Path**: `/api/health`
+4. **Create Web Service**
+
+### "Not Found" 가 뜰 때
+
+| 원인 | 확인 방법 |
+|------|-----------|
+| 배포 실패·진행 중 | Render 대시보드 → **Logs** 탭에서 빨간 오류 확인 |
+| 잘못된 URL | 대시보드 상단 **실제 URL** 복사 (이름이 다를 수 있음) |
+| 서비스 없음 | Web Service가 생성됐는지 확인 (Static Site 아님) |
+| 슬립 해제 중 | 무료 플랜 첫 접속 30초~1분 대기 후 새로고침 |
+
+정상이면 https://<서비스명>.onrender.com/api/health 에 JSON이 보입니다.
+
+```json
+{"status":"ok","parser_build":"table-format-v2","hwp_supported":false,...}
+```
 
 ### 무료 플랜 참고
 - 15분 미사용 시 슬립 → 첫 접속 시 30초~1분 정도 걸릴 수 있음
