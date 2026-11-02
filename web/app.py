@@ -31,7 +31,9 @@ from web.masking import mask_refund_workbook
 from web.runner import PipelineResult, run_pipeline_from_uploads
 from web.form_examples import upload_form_examples_html
 from web.sample_files import ensure_example_files, resolve_example_path
+from src.rules_config import TEMPLATE_FIELDS, RulesError
 from src.semester_config import DEFAULT_FILM_FEE_PER_SHEET, DEFAULT_LOCKER_DEPOSIT_REMARK
+from web.settings_file import build_settings, default_rules_text, parse_rules_text, settings_to_json
 from web.semester_inputs import (
     BasicInfo,
     UploadConfig,
@@ -127,6 +129,12 @@ def _error_page_context(detail: str, status_code: int) -> dict:
     elif "양식" in detail_str or "hwp" in detail_str.lower():
         title = "수입지출 양식을 준비하지 못했습니다"
         icon = "description"
+    elif "비고 규칙" in detail_str:
+        title = "비고 규칙을 읽지 못했습니다"
+        icon = "rule"
+    elif "기본 정보" in detail_str or "사업개요" in detail_str:
+        title = "입력값을 확인해 주세요"
+        icon = "edit_note"
     elif status_code >= 500:
         title = "문서 생성 중 오류가 발생했습니다"
         icon = "error"
@@ -222,6 +230,8 @@ async def index(request: Request) -> HTMLResponse:
             "hwp_supported": hwp_conversion_available(),
             "default_locker_remark": DEFAULT_LOCKER_DEPOSIT_REMARK,
             "default_film_fee": DEFAULT_FILM_FEE_PER_SHEET,
+            "default_rules_json": default_rules_text(),
+            "template_fields": TEMPLATE_FIELDS,
         },
     )
 
@@ -242,6 +252,7 @@ async def generate(
     author_contact: str = Form(""),
     locker_deposit_remark: str = Form(""),
     film_fee_per_sheet: str = Form(""),
+    rules_json: str = Form(""),
 ) -> HTMLResponse:
     _cleanup_expired_jobs()
 
@@ -278,7 +289,10 @@ async def generate(
             locker_deposit_remark=locker_deposit_remark,
             film_fee_per_sheet=film_fee_per_sheet,
         )
-        semester = build_semester_from_overview(business_overview, overdue_rules, basic)
+        remark_rules = parse_rules_text(rules_json)
+        semester = build_semester_from_overview(business_overview, overdue_rules, basic, remark_rules)
+    except RulesError as exc:
+        raise HTTPException(400, f"[비고 규칙] {exc}") from exc
     except ValueError as exc:
         raise HTTPException(400, f"[사업개요·기본 정보] {exc}") from exc
 
@@ -321,6 +335,17 @@ async def generate(
         overdue_rules_text=rules_text,
         template_hwpx_path=template_hwpx,
         overdue_rules_summary=rules_summary,
+        settings_json=settings_to_json(
+            build_settings(
+                semester_label=semester_label.strip(),
+                author=semester.author,
+                locker_deposit_remark=semester.locker_deposit_remark,
+                film_fee_per_sheet=semester.film_fee_per_sheet,
+                business_overview=overview_text,
+                overdue_rules_text=rules_text,
+                rules=semester.rules,
+            )
+        ),
     )
 
     try:

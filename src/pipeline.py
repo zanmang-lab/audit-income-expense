@@ -161,14 +161,15 @@ def _fill_page(
     if (
         semester.role_for(business_no) == "locker"
         and page.income_expense == "지출"
-        and "환불" in (_page_content(rows) or "")
+        and semester.rules.is_refund_page(_page_content(rows))
+        and semester.rules.refund_fee_advisory
     ):
         reviews.append(
             ReviewItem(
                 business_no=business_no,
                 page_index=page_index,
                 target="",
-                reason=semester.locker_refund_advisory,
+                reason=semester.rules.refund_fee_advisory,
                 advisory=True,
             )
         )

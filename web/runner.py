@@ -169,6 +169,8 @@ def run_pipeline_from_uploads(
             if upload.business_overview.strip():
                 zf.write(overview_path, "사업개요.txt")
             zf.write(rules_text_path, "연체료규정.txt")
+            if upload.settings_json:
+                zf.writestr("설정.json", upload.settings_json)
             for hp in zip_doc_paths:
                 zf.write(hp, Path(hp).name)
 

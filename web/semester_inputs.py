@@ -17,6 +17,7 @@ from src.semester_config import (
     semester_config_from_business_names,
 )
 from src.config_gen import OverdueRulesConfig
+from src.rules_config import ROLE_BY_LABEL, RuleSet
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".svg"}
 TEMPLATE_EXTENSIONS = {".hwp", ".hwpx"}
@@ -40,6 +41,7 @@ class UploadConfig:
     overdue_rules_text: str
     template_hwpx_path: Path
     overdue_rules_summary: str = ""
+    settings_json: str = ""  # 결과 zip에 넣을 설정.json (다음에 다시 불러오기용)
 
 
 def default_business_overview_placeholder() -> str:
@@ -87,21 +89,40 @@ def resolve_template(
         ) from exc
 
 
-def parse_business_name_overrides(text: str) -> dict[str, str]:
-    """사업개요에서 사업명 매핑 추출."""
+_ROLE_TAG = re.compile(r"\s*[\[［]\s*(" + "|".join(ROLE_BY_LABEL) + r")\s*[\]］]\s*$")
+
+
+def parse_business_overview(text: str) -> tuple[dict[str, str], dict[str, str]]:
+    """사업개요 → (사업명, 직접 지정한 사업 종류).
+
+    `1. 사물함 배부 사업 [사물함]` 처럼 줄 끝에 [사물함]/[대여]/[학생회비]/[일반]을
+    붙이면 그 종류를 쓰고, 없으면 사업명 키워드로 추론한다.
+    """
     stripped = text.strip()
     if not stripped:
-        return {}
+        return {}, {}
 
     if stripped.startswith("{"):
-        return parse_business_mapping_json(stripped)
+        return parse_business_mapping_json(stripped), {}
 
-    mapping: dict[str, str] = {}
+    names: dict[str, str] = {}
+    roles: dict[str, str] = {}
     for line in stripped.splitlines():
         match = _LINE_MAPPING.match(line)
-        if match:
-            mapping[match.group(1)] = match.group(2).strip()
-    return mapping
+        if not match:
+            continue
+        no, name = match.group(1), match.group(2).strip()
+        tag = _ROLE_TAG.search(name)
+        if tag:
+            roles[no] = ROLE_BY_LABEL[tag.group(1)]
+            name = name[: tag.start()].strip()
+        names[no] = name
+    return names, roles
+
+
+def parse_business_name_overrides(text: str) -> dict[str, str]:
+    """사업개요에서 사업명 매핑 추출 (종류 표시는 떼어 낸다)."""
+    return parse_business_overview(text)[0]
 
 
 @dataclass
@@ -127,10 +148,11 @@ def build_semester_from_overview(
     overview_text: str,
     overdue_rules: OverdueRulesConfig | None = None,
     basic: BasicInfo | None = None,
+    rules: RuleSet | None = None,
 ) -> SemesterConfig:
-    """사업개요 + 연체료 규칙 + 기본 정보로 엔진 설정."""
-    name_map = parse_business_name_overrides(overview_text)
-    config = semester_config_from_business_names(name_map)
+    """사업개요 + 연체료 규칙 + 기본 정보 + 비고 규칙으로 엔진 설정."""
+    name_map, roles = parse_business_overview(overview_text)
+    config = semester_config_from_business_names(name_map, roles, rules)
     changes: dict = {}
     if overdue_rules is not None:
         changes["overdue_rules"] = overdue_rules

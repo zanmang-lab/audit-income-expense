@@ -26,6 +26,31 @@
     <form action="/generate" method="post" enctype="multipart/form-data" class="space-y-8" id="upload-form">
       {% from "includes/macros.html" import file_zone, file_zone_compact %}
 
+      <!-- 설정 파일 -->
+      <div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl">
+        <div class="flex justify-between items-center flex-wrap gap-3">
+          <div>
+            <p class="text-headline-md font-headline-md text-on-surface flex items-center gap-2">
+              설정 파일
+              <span class="text-xs font-label-md px-1.5 py-0.5 bg-surface-container-high text-on-surface-variant rounded">선택</span>
+            </p>
+            <p class="mt-1 text-xs text-on-surface-variant">사업개요·연체료 규정·기본 정보·비고 규칙을 한 파일로 저장해 두고 다음에 불러오세요. 결과 zip에도 <code class="bg-surface-container-high px-1 rounded">설정.json</code>이 들어 있습니다.</p>
+          </div>
+          <div class="flex gap-2 flex-wrap">
+            <button type="button" id="settings-load-btn"
+              class="px-4 py-2 rounded-full border border-primary text-primary text-label-md font-label-md hover:bg-surface-container-low flex items-center gap-1">
+              <span class="material-symbols-outlined text-[18px]">upload_file</span>불러오기
+            </button>
+            <button type="button" id="settings-save-btn"
+              class="px-4 py-2 rounded-full border border-outline-variant text-on-surface text-label-md font-label-md hover:bg-surface-container-low flex items-center gap-1">
+              <span class="material-symbols-outlined text-[18px]">download</span>현재 입력으로 저장
+            </button>
+            <input type="file" id="settings-file" accept=".json,application/json" class="hidden">
+          </div>
+        </div>
+        <p id="settings-status" class="mt-3 text-xs hidden" role="status"></p>
+      </div>
+
       <!-- 0. 기본 정보 (선택) -->
       <details class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl group" id="basic-info">
         <summary class="cursor-pointer list-none flex justify-between items-center gap-2 select-none">
@@ -111,6 +136,8 @@
         <p class="mt-2 text-xs text-on-surface-variant">
           한 줄에 <code class="bg-surface-container-high px-1 rounded">번호. 사업명</code> 형식.
           사업명에 <code class="bg-surface-container-high px-1 rounded">사물함</code>·<code class="bg-surface-container-high px-1 rounded">대여</code>·<code class="bg-surface-container-high px-1 rounded">총학</code> 등이 있으면 비고 규칙이 자동 적용됩니다.
+          이름과 상관없이 종류를 정하려면 줄 끝에 <code class="bg-surface-container-high px-1 rounded">[사물함]</code>·<code class="bg-surface-container-high px-1 rounded">[대여]</code>·<code class="bg-surface-container-high px-1 rounded">[학생회비]</code>·<code class="bg-surface-container-high px-1 rounded">[일반]</code>을 붙이세요.
+          예: <code class="bg-surface-container-high px-1 rounded">5. 도서관 좌석 관리 [사물함]</code>
         </p>
       </div>
 
@@ -128,6 +155,36 @@
           물품이 여러 개면 쉼표로 구분하세요.
         </p>
       </div>
+
+      <!-- 비고 규칙 (고급) -->
+      <details class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl group" id="rules-info">
+        <summary class="cursor-pointer list-none flex justify-between items-center gap-2 select-none">
+          <span class="text-headline-md font-headline-md text-on-surface flex items-center gap-2">
+            비고 규칙
+            <span class="text-xs font-label-md px-1.5 py-0.5 bg-surface-container-high text-on-surface-variant rounded">고급 · 선택</span>
+          </span>
+          <span class="material-symbols-outlined text-on-surface-variant transition-transform group-open:rotate-180">expand_more</span>
+        </summary>
+        <p class="mt-2 text-xs text-on-surface-variant leading-relaxed">
+          비고 문장 틀, 환불 사유 표현, 연체료 비고 분류 같은 규칙입니다. 바꾸고 싶은 부분만 고치면 되고, 지운 항목은 기본값을 씁니다.
+          문장 틀의 <code class="bg-surface-container-high px-1 rounded">{중괄호}</code> 칸은 자동으로 채워집니다.
+        </p>
+        <textarea id="rules_json" name="rules_json" data-remember spellcheck="false"
+          class="mt-4 w-full min-h-[320px] p-4 border border-outline-variant rounded-lg focus:border-primary outline-none font-mono text-xs leading-relaxed">{{ default_rules_json }}</textarea>
+        <div class="mt-2 flex justify-between items-start gap-3 flex-wrap">
+          <p id="rules-status" class="text-xs text-on-surface-variant" role="status"></p>
+          <button type="button" id="rules-reset-btn" class="text-xs text-primary hover:underline">기본값으로 되돌리기</button>
+        </div>
+        <details class="mt-3">
+          <summary class="text-xs text-primary cursor-pointer">문장 틀마다 쓸 수 있는 칸</summary>
+          <ul class="mt-2 text-xs text-on-surface-variant space-y-1">
+            {% for name, fields in template_fields.items() %}
+            <li><strong>{{ name }}</strong>: {% for f in fields %}<code class="bg-surface-container-high px-1 rounded">{{ '{' ~ f ~ '}' }}</code>{% if not loop.last %} {% endif %}{% endfor %}</li>
+            {% endfor %}
+          </ul>
+          <p class="mt-2 text-xs text-on-surface-variant">{대상}은 "대상"(일반) 또는 "대상_대납"(다른 사람이 대신 입금) 틀로 만든 말입니다. {조사}는 앞말 받침에 맞춰 "으로/로"가 들어갑니다.</p>
+        </details>
+      </details>
 
       <!-- 4. 장부 -->
       <div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl">
@@ -207,6 +264,100 @@
       });
     });
 
+    // ── 설정 파일 불러오기/저장 ──
+    const DEFAULT_RULES_TEXT = {{ default_rules_json | tojson }};
+    const byName = (n) => document.querySelector(`[name="${n}"]`);
+    const settingsStatus = document.getElementById('settings-status');
+    function showStatus(el, msg, isError) {
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      el.style.color = isError ? '#b42318' : '';
+    }
+    const SETTINGS_FIELDS = [
+      ['semester_label', s => s.기본정보 && s.기본정보.학기명],
+      ['author_name', s => s.기본정보 && s.기본정보.작성자 && s.기본정보.작성자.성명],
+      ['author_position', s => s.기본정보 && s.기본정보.작성자 && s.기본정보.작성자.직위],
+      ['author_affiliation', s => s.기본정보 && s.기본정보.작성자 && s.기본정보.작성자.소속],
+      ['locker_deposit_remark', s => s.기본정보 && s.기본정보.사물함비고문구],
+      ['film_fee_per_sheet', s => s.기본정보 && s.기본정보.필름1장가격],
+      ['business_overview', s => s.사업개요],
+      ['overdue_rules_text', s => s.연체료규정],
+      ['rules_json', s => s.비고규칙 ? JSON.stringify(s.비고규칙, null, 2) : undefined],
+    ];
+    document.getElementById('settings-load-btn').addEventListener('click', () => document.getElementById('settings-file').click());
+    document.getElementById('settings-file').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        const data = JSON.parse(await file.text());
+        if (typeof data !== 'object' || data === null || !('설정버전' in data)) {
+          throw new Error('이 파일은 수입지출내역서 설정 파일이 아닙니다.');
+        }
+        let n = 0;
+        SETTINGS_FIELDS.forEach(([name, get]) => {
+          const v = get(data);
+          if (v !== undefined && v !== null && String(v) !== '') { byName(name).value = String(v); n++; }
+        });
+        document.getElementById('basic-info').open = true;
+        validateRules();
+        if (byName('rules_json').value.trim() !== DEFAULT_RULES_TEXT.trim()) document.getElementById('rules-info').open = true;
+        showStatus(settingsStatus, `'${file.name}'에서 ${n}개 항목을 불러왔습니다. 양식과 엑셀 파일은 따로 올려 주세요.`, false);
+      } catch (err) {
+        showStatus(settingsStatus, '설정 파일을 읽지 못했습니다: ' + err.message, true);
+      }
+      e.target.value = '';
+    });
+    document.getElementById('settings-save-btn').addEventListener('click', () => {
+      let rules = {};
+      try { rules = JSON.parse(byName('rules_json').value || '{}'); }
+      catch (err) { showStatus(settingsStatus, '비고 규칙의 JSON 형식이 잘못되어 저장하지 못했습니다. 비고 규칙 칸을 확인해 주세요.', true); return; }
+      const label = byName('semester_label').value.trim();
+      const data = {
+        _설명: "수입지출내역서 자동 작성 설정 파일입니다. 웹 첫 화면의 '설정 파일 불러오기'로 올리면 입력칸이 채워집니다. 비고규칙의 문장 틀에서 {중괄호} 칸은 자동으로 채워지는 자리입니다.",
+        설정버전: 1,
+        기본정보: {
+          학기명: label,
+          작성자: { 성명: byName('author_name').value.trim(), 직위: byName('author_position').value.trim(), 소속: byName('author_affiliation').value.trim() },
+          사물함비고문구: byName('locker_deposit_remark').value.trim(),
+          필름1장가격: byName('film_fee_per_sheet').value.trim(),
+        },
+        사업개요: byName('business_overview').value.trim(),
+        연체료규정: byName('overdue_rules_text').value.trim(),
+        비고규칙: rules,
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2) + '\n'], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `수입지출_설정${label ? '_' + label : ''}.json`;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+      showStatus(settingsStatus, '설정 파일을 저장했습니다. 연락처는 개인정보라 넣지 않았습니다.', false);
+    });
+
+    // ── 비고 규칙 칸 ──
+    const rulesStatus = document.getElementById('rules-status');
+    function validateRules() {
+      const el = byName('rules_json');
+      try {
+        const v = JSON.parse(el.value || '{}');
+        if (typeof v !== 'object' || v === null || Array.isArray(v)) throw new Error('{ } 로 감싼 형태여야 합니다');
+        rulesStatus.textContent = el.value.trim() === DEFAULT_RULES_TEXT.trim() ? '기본 규칙을 사용합니다.' : '바꾼 규칙을 사용합니다.';
+        rulesStatus.style.color = '';
+        return true;
+      } catch (err) {
+        rulesStatus.textContent = 'JSON 형식 오류: ' + err.message;
+        rulesStatus.style.color = '#b42318';
+        return false;
+      }
+    }
+    byName('rules_json').addEventListener('input', validateRules);
+    document.getElementById('rules-reset-btn').addEventListener('click', () => {
+      byName('rules_json').value = DEFAULT_RULES_TEXT;
+      validateRules();
+    });
+
     // 기본 정보 기억 (이 브라우저에만 저장, 실패해도 동작에는 영향 없음)
     const REMEMBER_KEY = 'audit-basic-info-v1';
     const remembered = document.querySelectorAll('[data-remember]');
@@ -218,8 +369,15 @@
       });
       if (any) document.getElementById('basic-info').open = true;
     } catch (e) {}
+    validateRules();
 
-    document.getElementById('upload-form').addEventListener('submit', () => {
+    document.getElementById('upload-form').addEventListener('submit', (e) => {
+      if (!validateRules()) {
+        e.preventDefault();
+        document.getElementById('rules-info').open = true;
+        byName('rules_json').focus();
+        return;
+      }
       try {
         const data = {};
         remembered.forEach(el => { data[el.name] = el.value; });

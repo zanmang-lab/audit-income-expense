@@ -7,12 +7,12 @@ from typing import Any, Callable
 
 from .config_gen import OverdueRulesConfig, lookup_per_day
 from .parse_ledger import LedgerRow, Page
+from .rules_config import DEFAULT_RULESET, RuleSet
 from .semester_config import SemesterConfig
 from .utils import (
     format_amount,
     has_batchim,
     josa_ro_euro,
-    normalize_refund_reason,
     parse_rental_goods,
     parse_amount_value,
     parse_date_value,
@@ -30,11 +30,6 @@ LOCKER_FIXED_REMARK = (
     "전자 사물함은 대여비 4,000원, 일반 사물함은 대여비 2,000원"
 )  # 레거시 기본값; 실제 출력은 SemesterConfig.locker_deposit_remark 사용
 
-DAENAP_PATTERNS = [
-    re.compile(r"(?P<name>.+?)'으로 입금"),
-    re.compile(r"(?P<name>.+?)'로 입금"),
-    re.compile(r"(?P<name>.+?)\s*충당"),
-]
 
 
 @dataclass
@@ -190,6 +185,18 @@ def _find_overdue_direct(
     )
 
 
+def _daenap_josa(note: str, depositor_name: str) -> str | None:
+    """비고가 '입금자(')으로 입금' / '입금자 충당' 형태면 조사를, 아니면 None."""
+    name = re.escape(depositor_name)
+    lead = r"(?:^|[\s,(/])"
+    m = re.search(lead + name + r"\s*['’‘\"]?\s*(으로|로)\s*입금", note)
+    if m:
+        return m.group(1)
+    if re.search(lead + name + r"\s*['’‘\"]?\s*충당", note):
+        return josa_ro_euro(depositor_name)
+    return None
+
+
 def _find_daenap_record(
     records: list[OverdueRecord],
     depositor_name: str,
@@ -197,23 +204,11 @@ def _find_daenap_record(
     ledger_date: Any,
 ) -> tuple[OverdueRecord | None, str | None, str | None]:
     candidates: list[tuple[OverdueRecord, str | None]] = []
-    for rec in records:
-        note = rec.note or ""
-        for pattern in DAENAP_PATTERNS:
-            match = pattern.search(note)
-            if not match:
-                continue
-            if match.group("name").strip() != depositor_name:
-                continue
-            josa = (
-                "으로"
-                if "'으로" in note
-                else "로"
-                if "'로" in note
-                else josa_ro_euro(depositor_name)
-            )
-            candidates.append((rec, josa))
-            break
+    if depositor_name:
+        for rec in records:
+            josa = _daenap_josa(rec.note or "", depositor_name)
+            if josa is not None:
+                candidates.append((rec, josa))
 
     if not candidates:
         return None, None, None
@@ -235,18 +230,6 @@ def _find_daenap_record(
     if picked is None:
         return None, None, err
     return picked, josa_map[id(picked)], None
-
-
-def _classify_rental_note(note: str | None) -> str:
-    """연체료목록 비고 열 분류 (SPEC 6-3). 대납 문구는 '연체'로 처리(일수 계산 대상)."""
-    text = (note or "").strip()
-    if text == "필름값":
-        return "필름값"
-    if text == "손망실비":
-        return "손망실비"
-    if text == "감면":
-        return "감면"
-    return "연체"
 
 
 def _daily_rates(goods_text: str, rules: OverdueRulesConfig) -> list[int]:
@@ -322,18 +305,17 @@ def _build_rental_remark_line(
     is_daenap: bool,
     josa: str | None,
     film_fee_per_sheet: int = 1000,
+    remark_rules: RuleSet = DEFAULT_RULESET,
 ) -> tuple[str, list[RemarkReview]]:
     reviews: list[RemarkReview] = []
     fee_text = format_amount(fee)
     goods_display = _format_goods_for_remark(goods_text)
-    note_kind = _classify_rental_note(note)
+    note_kind = remark_rules.rental_note_kind(note)
     review_target = renter_name
+    R = remark_rules
 
-    if is_daenap:
-        used_josa = josa or josa_ro_euro(depositor_name)
-        subject = f"{renter_name}('{depositor_name}'{used_josa} 입금)님 "
-    else:
-        subject = f"{renter_name}님 "
+    subject = R.subject(renter_name, depositor_name, josa) if is_daenap else R.subject(renter_name)
+    common = {"대상": subject, "물품": goods_display, "금액": fee_text}
 
     if note_kind == "필름값":
         if film_fee_per_sheet <= 0 or fee % film_fee_per_sheet != 0:
@@ -349,59 +331,37 @@ def _build_rental_remark_line(
             m_text = ""
         else:
             m_text = str(fee // film_fee_per_sheet)
-        line = f"{subject}폴라로이드 필름 {m_text}장 추가로 소모하여 {fee_text}원 부과"
-        return line, reviews
+        return R.render("필름값", 장수=m_text, **common), reviews
 
     if note_kind == "손망실비":
-        line = f"{subject}{goods_display} 손망실비 {fee_text}원 부과"
-        return line, reviews
+        return R.render("손망실비", **common), reviews
 
     if note_kind == "감면":
         days, day_review = _calc_overdue_days(fee, goods_text, rules)
         reasons = [r for r in [day_review, "감면 건 — 연체일수·감면 사유 확인 필요"] if r]
-        combined_review = "; ".join(reasons)
         if days is not None:
-            line = (
-                f"{subject}{goods_display} 대여 후 {days}일 연체되어 "
-                f"연체료 {fee_text}원 감면 (검수필요)"
-            )
+            line = R.render("감면", 일수=days, **common)
         else:
-            line = (
-                f"{subject}{goods_display} 대여 후 연체되어 "
-                f"연체료 {fee_text}원 감면 (검수필요)"
-            )
-        reviews.append(RemarkReview(target=review_target, reason=combined_review))
+            line = R.render("감면_일수불명", **common)
+        reviews.append(RemarkReview(target=review_target, reason="; ".join(reasons)))
         return line, reviews
 
     days, day_review = _calc_overdue_days(fee, goods_text, rules)
     if days is not None and not day_review:
-        line = (
-            f"{subject}{goods_display} 대여 후 {days}일 연체되어 "
-            f"연체료 {fee_text}원 부과"
-        )
+        line = R.render("연체", 일수=days, **common)
     elif days is not None:
-        line = (
-            f"{subject}{goods_display} 대여 후 {days}일 연체되어 "
-            f"연체료 {fee_text}원 부과 (검수필요)"
-        )
+        line = R.render("연체_검수", 일수=days, **common)
         reviews.append(
-            RemarkReview(
-                target=review_target,
-                reason=day_review or "연체일수 역산 예외",
-            )
+            RemarkReview(target=review_target, reason=day_review or "연체일수 역산 예외")
         )
     else:
-        line = (
-            f"{subject}{goods_display} 대여 후 연체되어 "
-            f"연체료 {fee_text}원 부과 (연체일수 검수필요)"
-        )
+        line = R.render("연체_일수불명", **common)
         reviews.append(
             RemarkReview(
                 target=review_target,
                 reason=day_review or "연체료·규정 단가로 연체일수 역산이 불가",
             )
         )
-
     return line, reviews
 
 
@@ -410,6 +370,7 @@ def _build_rental_remark_for_row(
     overdue_records: list[OverdueRecord],
     rules: OverdueRulesConfig,
     film_fee_per_sheet: int = 1000,
+    remark_rules: RuleSet = DEFAULT_RULESET,
 ) -> RemarkResult:
     depositor_name = row.item_text.strip()
     amount = int(row.income)
@@ -429,6 +390,7 @@ def _build_rental_remark_for_row(
             is_daenap=False,
             josa=None,
             film_fee_per_sheet=film_fee_per_sheet,
+            remark_rules=remark_rules,
         )
         reviews.extend(line_reviews)
         return RemarkResult(text=line, review_items=reviews)
@@ -447,6 +409,7 @@ def _build_rental_remark_for_row(
             is_daenap=True,
             josa=josa,
             film_fee_per_sheet=film_fee_per_sheet,
+            remark_rules=remark_rules,
         )
         reviews.extend(line_reviews)
         return RemarkResult(text=line, review_items=reviews)
@@ -475,13 +438,6 @@ def _build_locker_deposit_remark(deposit_remark: str) -> RemarkResult:
     return RemarkResult(text=deposit_remark, review_items=[])
 
 
-def _refund_reason_phrase(reason: str) -> str:
-    """비고 문장에 쓸 사유 표현."""
-    return {
-        "중복 입금": "두 번 송금",
-    }.get(reason, reason)
-
-
 def _format_refund_names_line(names: list[str], name_suffix: str) -> str:
     """여러 명 + 공통 접미사. 예: 이지원님, … 구예모님은 당첨"""
     if len(names) == 1:
@@ -490,46 +446,42 @@ def _format_refund_names_line(names: list[str], name_suffix: str) -> str:
     return f"{head}, {names[-1]}님은 {name_suffix}"
 
 
-def _refund_single_remark_line(name: str, reason: str) -> str:
-    phrase = _refund_reason_phrase(reason)
+def _refund_single_remark_line(name: str, phrase: str, remark_rules: RuleSet) -> str:
     josa = "으로" if has_batchim(phrase) else "로"
-    return f"{name}님은 {phrase}{josa} 인하여 환불 진행"
+    return remark_rules.render("환불", 이름=name, 사유=phrase, 조사=josa)
 
 
 def _append_grouped_refund_lines(
     lines: list[str],
     entries: list[tuple[str, str]],
+    remark_rules: RuleSet = DEFAULT_RULESET,
 ) -> None:
-    """같은 환불 사유는 이름을 묶어 가독성 있게 출력."""
+    """같은 환불 사유는 이름을 묶어 가독성 있게 출력 (비고규칙 '환불사유_묶음')."""
     grouped: dict[str, list[str]] = {}
     reason_order: list[str] = []
-    for name, reason in entries:
-        if reason not in grouped:
-            grouped[reason] = []
-            reason_order.append(reason)
-        grouped[reason].append(name)
+    for name, phrase in entries:
+        if phrase not in grouped:
+            grouped[phrase] = []
+            reason_order.append(phrase)
+        grouped[phrase].append(name)
 
-    group_splits: dict[str, tuple[str, str]] = {
-        "당첨 등록 포기": ("당첨", "등록 포기로 인하여 환불 진행"),
-        "중복 등록 포기": ("중복", "등록 포기로 인하여 환불 진행"),
-    }
-
-    for reason in reason_order:
-        names = grouped[reason]
-        split = group_splits.get(reason)
+    for phrase in reason_order:
+        names = grouped[phrase]
+        split = remark_rules.refund_groups.get(phrase)
         if split and len(names) >= 2:
             name_suffix, reason_line = split
             lines.append(_format_refund_names_line(names, name_suffix))
             lines.append(reason_line)
         else:
             for name in names:
-                lines.append(_refund_single_remark_line(name, reason))
+                lines.append(_refund_single_remark_line(name, phrase, remark_rules))
 
 
 def _build_locker_refund_remark(
     rows: list[LedgerRow],
     refund_records: list[RefundRecord],
     deposit_remark: str,
+    remark_rules: RuleSet = DEFAULT_RULESET,
 ) -> RemarkResult:
     lines = [deposit_remark]
     reviews: list[RemarkReview] = []
@@ -546,9 +498,9 @@ def _build_locker_refund_remark(
                 )
             )
             continue
-        entries.append((name, normalize_refund_reason(refund.reason)))
+        entries.append((name, remark_rules.refund_phrase(refund.reason)))
 
-    _append_grouped_refund_lines(lines, entries)
+    _append_grouped_refund_lines(lines, entries, remark_rules)
     return RemarkResult(text="\n".join(lines), review_items=reviews)
 
 
@@ -561,15 +513,17 @@ def build_page_remark(
 ) -> RemarkResult:
     role = semester.role_for(business_no)
     rules = semester.overdue_rules
+    remark_rules = semester.rules
 
     if role == "locker":
         if page.income_expense == "수입":
             return _build_locker_deposit_remark(semester.locker_deposit_remark)
-        if "환불" in (page.rows[0].overview or ""):
+        if remark_rules.is_refund_page(page.rows[0].overview):
             return _build_locker_refund_remark(
                 page.rows,
                 refund_records,
                 semester.locker_deposit_remark,
+                remark_rules,
             )
 
     if role == "rental" and page.income_expense == "수입":
@@ -581,6 +535,7 @@ def build_page_remark(
                 overdue_records,
                 rules,
                 film_fee_per_sheet=semester.film_fee_per_sheet,
+                remark_rules=remark_rules,
             )
             if result.text.strip():
                 lines.append(result.text.strip())
