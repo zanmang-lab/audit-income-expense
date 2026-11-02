@@ -4,6 +4,8 @@
   "label": "2026-1학기",
   "ledger_sheet": "DATA (2)",
 
+  "author": { "성명": "", "직위": "", "소속": "", "연락처": "" },
+
   "businesses": {
     "0": { "name": "총학생회비", "role": "student_fee" },
     "1": { "name": "1학기 온라인 사물함 배부 사업", "role": "locker" },

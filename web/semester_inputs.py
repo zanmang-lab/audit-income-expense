@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from src.config_gen import parse_business_mapping_json
@@ -104,24 +104,52 @@ def parse_business_name_overrides(text: str) -> dict[str, str]:
     return mapping
 
 
+@dataclass
+class BasicInfo:
+    """웹 폼 '기본 정보' — 비워 두면 기존 기본값을 쓴다."""
+
+    semester_label: str = ""
+    author: dict[str, str] | None = None
+    locker_deposit_remark: str = ""
+    film_fee_per_sheet: str = ""
+
+
+def parse_film_fee(text: str) -> int | None:
+    cleaned = re.sub(r"[,\s원₩]", "", text or "")
+    if not cleaned:
+        return None
+    if not cleaned.isdigit() or int(cleaned) <= 0:
+        raise ValueError("필름 1장 가격은 0보다 큰 숫자로 입력해 주세요. (예: 1000)")
+    return int(cleaned)
+
+
 def build_semester_from_overview(
     overview_text: str,
     overdue_rules: OverdueRulesConfig | None = None,
+    basic: BasicInfo | None = None,
 ) -> SemesterConfig:
-    """사업개요 + (이미지에서 읽은) 연체료 규칙으로 엔진 설정."""
+    """사업개요 + 연체료 규칙 + 기본 정보로 엔진 설정."""
     name_map = parse_business_name_overrides(overview_text)
     config = semester_config_from_business_names(name_map)
-    if overdue_rules is None:
-        return config
-    return SemesterConfig(
-        label=config.label,
-        ledger_sheet=config.ledger_sheet,
-        businesses=config.businesses,
-        locker_deposit_remark=config.locker_deposit_remark,
-        locker_refund_advisory=config.locker_refund_advisory,
-        film_fee_per_sheet=config.film_fee_per_sheet,
-        overdue_rules=overdue_rules,
-    )
+    changes: dict = {}
+    if overdue_rules is not None:
+        changes["overdue_rules"] = overdue_rules
+    if basic is not None:
+        label = basic.semester_label.strip()
+        if label:
+            if re.search(r'[\\/:*?"<>|]', label):
+                raise ValueError('학기명에는 \\ / : * ? " < > | 를 쓸 수 없습니다.')
+            changes["label"] = f"{label}_{DEFAULT_LABEL}"
+        author = {k: v.strip() for k, v in (basic.author or {}).items() if v and v.strip()}
+        if author:
+            changes["author"] = author
+        remark = basic.locker_deposit_remark.strip()
+        if remark:
+            changes["locker_deposit_remark"] = remark
+        film_fee = parse_film_fee(basic.film_fee_per_sheet)
+        if film_fee is not None:
+            changes["film_fee_per_sheet"] = film_fee
+    return replace(config, **changes) if changes else config
 
 
 def validate_image(filename: str, data: bytes) -> str:

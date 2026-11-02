@@ -98,8 +98,12 @@ def _ledger_table() -> str:
   </tr>
 </tbody>""") + (
         '<p class="p-3 text-xs text-on-surface-variant bg-surface-container-low border-t border-outline-variant">'
-        "첫 행은 헤더, 2행부터 데이터입니다. 시트 이름은 자유롭고, 데이터가 있는 시트를 자동으로 읽습니다. "
-        "<strong>구분(F열)</strong>은 장부 값을 그대로 수입지출내역서에 옮깁니다."
+        "<strong>헤더 이름으로 열을 찾으므로 열 순서와 다른 열(현금 등)은 상관없습니다.</strong> "
+        "꼭 필요한 열: 날짜·사업번호·기재내용(세목)·수입·지출. 선택: 세부번호·구분·개요·오류여부. "
+        "날짜는 2026-03-10, 2026.3.10, 2026년 3월 10일 모두 읽습니다. "
+        "시트 이름은 자유롭고, 데이터가 있는 시트를 자동으로 읽습니다. "
+        "<strong>구분</strong>은 장부 값을 그대로 수입지출내역서에 옮깁니다. "
+        "읽지 못한 행은 결과 화면의 <strong>입력 파일 확인</strong>에 표시됩니다."
         "</p>"
     )
 
@@ -118,7 +122,11 @@ def _overdue_table() -> str:
   <tr><td class="p-2 border-b border-r border-outline-variant">2026-03-23</td><td class="p-2 border-b border-r border-outline-variant">보조배터리 1개</td><td class="p-2 border-b border-r border-outline-variant">김지민</td><td class="p-2 border-b border-r border-outline-variant">4,000</td><td class="p-2 border-b border-outline-variant"></td></tr>
   <tr class="bg-surface-container-low"><td class="p-2 border-b border-r border-outline-variant">2026-03-31</td><td class="p-2 border-b border-r border-outline-variant">폴라로이드 필름</td><td class="p-2 border-b border-r border-outline-variant">하명진</td><td class="p-2 border-b border-r border-outline-variant">7,000</td><td class="p-2 border-b border-outline-variant">필름값</td></tr>
   <tr><td class="p-2 border-r border-outline-variant">2026-04-01</td><td class="p-2 border-r border-outline-variant">돗자리(대) 1개</td><td class="p-2 border-r border-outline-variant">서윤아</td><td class="p-2 border-r border-outline-variant">9,000</td><td class="p-2 border-outline-variant">조소영'으로 입금</td></tr>
-</tbody>""")
+</tbody>""") + (
+        '<p class="p-3 text-xs text-on-surface-variant bg-surface-container-low border-t border-outline-variant">'
+        "헤더 이름으로 열을 찾습니다. 필요한 열: 대여물품·성명(이름)·연체료. 선택: 반납일·비고."
+        "</p>"
+    )
 
 
 def _refund_table() -> str:
@@ -133,4 +141,8 @@ def _refund_table() -> str:
 <tbody>
   <tr><td class="p-2 border-b border-r border-outline-variant">전자-12</td><td class="p-2 border-b border-r border-outline-variant">이지원</td><td class="p-2 border-b border-r border-outline-variant">4,000</td><td class="p-2 border-b border-outline-variant">당첨등록포기</td></tr>
   <tr class="bg-surface-container-low"><td class="p-2 border-r border-outline-variant">일반-05</td><td class="p-2 border-r border-outline-variant">박민수</td><td class="p-2 border-r border-outline-variant">2,000</td><td class="p-2">두번송금</td></tr>
-</tbody>""")
+</tbody>""") + (
+        '<p class="p-3 text-xs text-on-surface-variant bg-surface-container-low border-t border-outline-variant">'
+        "헤더 이름으로 열을 찾습니다. 필요한 열: 이름(성명)·사유. 선택: 사물함 번호·환불금액."
+        "</p>"
+    )

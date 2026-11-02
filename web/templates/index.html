@@ -26,6 +26,62 @@
     <form action="/generate" method="post" enctype="multipart/form-data" class="space-y-8" id="upload-form">
       {% from "includes/macros.html" import file_zone, file_zone_compact %}
 
+      <!-- 0. 기본 정보 (선택) -->
+      <details class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl group" id="basic-info">
+        <summary class="cursor-pointer list-none flex justify-between items-center gap-2 select-none">
+          <span class="text-headline-md font-headline-md text-on-surface flex items-center gap-2">
+            기본 정보
+            <span class="text-xs font-label-md px-1.5 py-0.5 bg-surface-container-high text-on-surface-variant rounded">선택</span>
+          </span>
+          <span class="material-symbols-outlined text-on-surface-variant transition-transform group-open:rotate-180">expand_more</span>
+        </summary>
+        <p class="mt-2 text-xs text-on-surface-variant">비워 두면 기존 기본값을 씁니다. 입력한 값은 이 브라우저에 기억됩니다.</p>
+
+        <div class="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <label class="block sm:col-span-2">
+            <span class="text-label-md font-label-md text-on-surface">학기명</span>
+            <input name="semester_label" data-remember type="text" placeholder="예: 2026-2학기"
+              class="mt-1 w-full p-3 border border-outline-variant rounded-lg focus:border-primary outline-none text-body-md">
+            <span class="mt-1 block text-xs text-on-surface-variant">결과 파일 이름 앞에 붙습니다 → <code class="bg-surface-container-high px-1 rounded">2026-2학기_수입지출내역서_1_사업명.hwpx</code></span>
+          </label>
+          <label class="block">
+            <span class="text-label-md font-label-md text-on-surface">작성자 성명</span>
+            <input name="author_name" data-remember type="text" autocomplete="off"
+              class="mt-1 w-full p-3 border border-outline-variant rounded-lg focus:border-primary outline-none text-body-md">
+          </label>
+          <label class="block">
+            <span class="text-label-md font-label-md text-on-surface">직위</span>
+            <input name="author_position" data-remember type="text" placeholder="예: 사무국 총무"
+              class="mt-1 w-full p-3 border border-outline-variant rounded-lg focus:border-primary outline-none text-body-md">
+          </label>
+          <label class="block">
+            <span class="text-label-md font-label-md text-on-surface">소속</span>
+            <input name="author_affiliation" data-remember type="text" placeholder="예: 학생복지위원회"
+              class="mt-1 w-full p-3 border border-outline-variant rounded-lg focus:border-primary outline-none text-body-md">
+          </label>
+          <label class="block">
+            <span class="text-label-md font-label-md text-on-surface">연락처</span>
+            <input name="author_contact" type="text" autocomplete="off"
+              class="mt-1 w-full p-3 border border-outline-variant rounded-lg focus:border-primary outline-none text-body-md">
+          </label>
+          <p class="sm:col-span-2 text-xs text-on-surface-variant -mt-1">
+            작성자 정보는 양식에서 <code class="bg-surface-container-high px-1 rounded">성명</code>·<code class="bg-surface-container-high px-1 rounded">직위</code>·<code class="bg-surface-container-high px-1 rounded">소속</code>·<code class="bg-surface-container-high px-1 rounded">연락처</code> 칸을 찾아 그 오른쪽 칸에 모든 페이지 동일하게 넣습니다. 연락처는 기억하지 않습니다.
+          </p>
+          <label class="block sm:col-span-2">
+            <span class="text-label-md font-label-md text-on-surface">사물함 비고 문구</span>
+            <textarea name="locker_deposit_remark" data-remember rows="2"
+              class="mt-1 w-full p-3 border border-outline-variant rounded-lg focus:border-primary outline-none text-body-md">{{ default_locker_remark }}</textarea>
+            <span class="mt-1 block text-xs text-on-surface-variant">사물함 사업의 입금·환불 페이지 비고 첫 줄에 들어갑니다. 대여비가 바뀌면 고쳐 주세요.</span>
+          </label>
+          <label class="block">
+            <span class="text-label-md font-label-md text-on-surface">폴라로이드 필름 1장 가격(원)</span>
+            <input name="film_fee_per_sheet" data-remember type="text" inputmode="numeric" value="{{ default_film_fee }}"
+              class="mt-1 w-full p-3 border border-outline-variant rounded-lg focus:border-primary outline-none text-body-md">
+            <span class="mt-1 block text-xs text-on-surface-variant">필름값 금액 ÷ 이 가격 = 장수</span>
+          </label>
+        </div>
+      </details>
+
       <!-- 1. 양식 -->
       <div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl">
         <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
@@ -151,7 +207,25 @@
       });
     });
 
+    // 기본 정보 기억 (이 브라우저에만 저장, 실패해도 동작에는 영향 없음)
+    const REMEMBER_KEY = 'audit-basic-info-v1';
+    const remembered = document.querySelectorAll('[data-remember]');
+    try {
+      const saved = JSON.parse(localStorage.getItem(REMEMBER_KEY) || '{}');
+      let any = false;
+      remembered.forEach(el => {
+        if (saved[el.name] !== undefined && saved[el.name] !== '') { el.value = saved[el.name]; any = true; }
+      });
+      if (any) document.getElementById('basic-info').open = true;
+    } catch (e) {}
+
     document.getElementById('upload-form').addEventListener('submit', () => {
+      try {
+        const data = {};
+        remembered.forEach(el => { data[el.name] = el.value; });
+        localStorage.setItem(REMEMBER_KEY, JSON.stringify(data));
+      } catch (e) {}
+
       const btn = document.getElementById('submit-btn');
       const icon = document.getElementById('submit-icon');
       const label = document.getElementById('submit-label');

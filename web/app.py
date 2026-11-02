@@ -26,12 +26,14 @@ from src.parse_overdue_rules_image import (
     rules_to_summary,
 )
 from src.export_hwp import hwp_conversion_available
-from web.errors import PipelineError, format_error_detail, run_stage
+from web.errors import PipelineError, format_error_detail, is_user_input_error, run_stage
 from web.masking import mask_refund_workbook
 from web.runner import PipelineResult, run_pipeline_from_uploads
 from web.form_examples import upload_form_examples_html
 from web.sample_files import ensure_example_files, resolve_example_path
+from src.semester_config import DEFAULT_FILM_FEE_PER_SHEET, DEFAULT_LOCKER_DEPOSIT_REMARK
 from web.semester_inputs import (
+    BasicInfo,
     UploadConfig,
     build_semester_from_overview,
     default_business_overview_placeholder,
@@ -84,6 +86,8 @@ class DownloadJob:
     rules_summary: str
     review_required: list[str]
     review_advisory: list[str]
+    input_required: list[str]
+    input_advisory: list[str]
 
 
 _jobs: dict[str, DownloadJob] = {}
@@ -117,7 +121,7 @@ def _error_page_context(detail: str, status_code: int) -> dict:
     if show_ocr:
         title = "연체료 규정을 읽지 못했습니다"
         icon = "document_scanner"
-    elif "xlsx" in detail_str.lower() or "엑셀" in detail_str:
+    elif "xlsx" in detail_str.lower() or "엑셀" in detail_str or "열을 찾지 못했습니다" in detail_str or "장부 데이터를 찾지 못했습니다" in detail_str:
         title = "엑셀 파일을 읽지 못했습니다"
         icon = "table_view"
     elif "양식" in detail_str or "hwp" in detail_str.lower():
@@ -216,6 +220,8 @@ async def index(request: Request) -> HTMLResponse:
             "default_overdue_rules": default_overdue_rules_placeholder(),
             "examples": upload_form_examples_html(),
             "hwp_supported": hwp_conversion_available(),
+            "default_locker_remark": DEFAULT_LOCKER_DEPOSIT_REMARK,
+            "default_film_fee": DEFAULT_FILM_FEE_PER_SHEET,
         },
     )
 
@@ -229,6 +235,13 @@ async def generate(
     refund: UploadFile = File(...),
     template: UploadFile = File(...),
     overdue_rules_text: str = Form(...),
+    semester_label: str = Form(""),
+    author_name: str = Form(""),
+    author_position: str = Form(""),
+    author_affiliation: str = Form(""),
+    author_contact: str = Form(""),
+    locker_deposit_remark: str = Form(""),
+    film_fee_per_sheet: str = Form(""),
 ) -> HTMLResponse:
     _cleanup_expired_jobs()
 
@@ -254,9 +267,20 @@ async def generate(
         raise HTTPException(400, str(exc)) from exc
 
     try:
-        semester = build_semester_from_overview(business_overview, overdue_rules)
+        basic = BasicInfo(
+            semester_label=semester_label,
+            author={
+                "성명": author_name,
+                "직위": author_position,
+                "소속": author_affiliation,
+                "연락처": author_contact,
+            },
+            locker_deposit_remark=locker_deposit_remark,
+            film_fee_per_sheet=film_fee_per_sheet,
+        )
+        semester = build_semester_from_overview(business_overview, overdue_rules, basic)
     except ValueError as exc:
-        raise HTTPException(400, format_error_detail("사업개요", exc)) from exc
+        raise HTTPException(400, f"[사업개요·기본 정보] {exc}") from exc
 
     overview_text = business_overview.strip()
 
@@ -266,7 +290,7 @@ async def generate(
             lambda: mask_refund_workbook(refund_bytes),
         )
     except PipelineError as exc:
-        raise HTTPException(500, str(exc)) from exc
+        raise HTTPException(400 if is_user_input_error(exc) else 500, str(exc)) from exc
 
     if dropped_cols:
         masking_ok = False
@@ -309,6 +333,8 @@ async def generate(
         )
     except PipelineError as exc:
         shutil.rmtree(work_dir, ignore_errors=True)
+        if is_user_input_error(exc):
+            raise HTTPException(400, str(exc)) from exc
         logger.exception("파이프라인 오류")
         raise HTTPException(500, str(exc)) from exc
     except Exception as exc:
@@ -336,6 +362,8 @@ async def generate(
         rules_summary=rules_summary,
         review_required=[item.format_line() for item in required_items],
         review_advisory=[item.format_line() for item in advisory_items],
+        input_required=[i.format_line() for i in result.input_issues if not i.advisory],
+        input_advisory=[i.format_line() for i in result.input_issues if i.advisory],
     )
 
     job = _jobs[job_id]
@@ -357,6 +385,8 @@ async def generate(
             "rules_summary": job.rules_summary,
             "review_required": job.review_required,
             "review_advisory": job.review_advisory,
+            "input_required": job.input_required,
+            "input_advisory": job.input_advisory,
         },
     )
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 import zipfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from io import BytesIO
 from pathlib import Path
 from typing import BinaryIO
@@ -11,6 +11,7 @@ from typing import BinaryIO
 import openpyxl
 
 from src.export_hwp import HwpConversionError, convert_hwpx_to_hwp
+from src.fill_hwpx import missing_label_fields
 from src.parse_ledger import load_ledger_workbook, parse_ledger_workbook
 from src.pipeline import (
     ReviewItem,
@@ -21,6 +22,7 @@ from src.pipeline import (
 )
 from src.remarks import parse_overdue_sheet, parse_refund_sheet
 from src.semester_config import semester_config_to_dict
+from src.sheet_reader import InputIssue
 from web.errors import run_stage
 from web.semester_inputs import UploadConfig
 
@@ -42,6 +44,7 @@ class PipelineResult:
     zip_path: Path
     dropped_sensitive_columns: list[str]
     review_items: list[ReviewItem]
+    input_issues: list[InputIssue] = field(default_factory=list)
 
 
 def run_pipeline_from_uploads(
@@ -58,10 +61,12 @@ def run_pipeline_from_uploads(
     output_dir.mkdir(exist_ok=True)
     semester = upload.semester
 
+    input_issues: list[InputIssue] = []
+
     def _load_overdue() -> list:
         overdue_wb = openpyxl.load_workbook(overdue_source, read_only=True, data_only=True)
         try:
-            return parse_overdue_sheet(overdue_wb.active)
+            return parse_overdue_sheet(overdue_wb.active, issues=input_issues)
         finally:
             overdue_wb.close()
 
@@ -70,7 +75,7 @@ def run_pipeline_from_uploads(
     def _load_refund() -> list:
         refund_wb = openpyxl.load_workbook(BytesIO(refund_source), data_only=True)
         try:
-            return parse_refund_sheet(refund_wb.active)
+            return parse_refund_sheet(refund_wb.active, issues=input_issues)
         finally:
             refund_wb.close()
 
@@ -79,7 +84,7 @@ def run_pipeline_from_uploads(
     def _load_ledger() -> dict:
         ledger_wb = load_ledger_workbook(ledger_source)
         try:
-            return parse_ledger_workbook(ledger_wb, semester=semester)
+            return parse_ledger_workbook(ledger_wb, semester=semester, issues=input_issues)
         finally:
             ledger_wb.close()
 
@@ -103,7 +108,9 @@ def run_pipeline_from_uploads(
     def _write_reports() -> None:
         with preview_path.open("w", encoding="utf-8") as f:
             json.dump(result_to_preview_dict(result), f, ensure_ascii=False, indent=2)
-        review_path.write_text(format_review_report(result.review_items), encoding="utf-8")
+        review_path.write_text(
+            format_review_report(result.review_items, input_issues), encoding="utf-8"
+        )
         with rules_extract_path.open("w", encoding="utf-8") as f:
             json.dump(
                 semester_config_to_dict(semester)["overdue_rules"],
@@ -121,8 +128,22 @@ def run_pipeline_from_uploads(
             template_path=str(upload.template_hwpx_path),
             output_dir=str(output_dir),
             filename_prefix=semester.label,
+            author=semester.author,
         ),
     )
+
+    if semester.author:
+        missing = run_stage(
+            "양식 작성자 칸 확인",
+            lambda: missing_label_fields(str(upload.template_hwpx_path), list(semester.author)),
+        )
+        for name in missing:
+            input_issues.append(InputIssue(
+                "양식", f"'{name}' 라벨 칸을 찾지 못해 입력한 {name}을(를) 넣지 않았습니다.", advisory=True))
+        if missing:
+            review_path.write_text(
+                format_review_report(result.review_items, input_issues), encoding="utf-8"
+            )
 
     hwp_paths: list[str] = []
     hwp_conversion_note: str | None = None
@@ -182,4 +203,5 @@ def run_pipeline_from_uploads(
         zip_path=zip_path,
         dropped_sensitive_columns=[],
         review_items=result.review_items,
+        input_issues=input_issues,
     )

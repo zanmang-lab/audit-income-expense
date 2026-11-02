@@ -13,9 +13,17 @@ from .utils import (
     has_batchim,
     josa_ro_euro,
     normalize_refund_reason,
-    parse_amount,
     parse_rental_goods,
+    parse_amount_value,
+    parse_date_value,
     same_calendar_date,
+)
+from .sheet_reader import (
+    OVERDUE_COLUMNS,
+    REFUND_COLUMNS,
+    InputIssue,
+    is_blank_row,
+    resolve_columns,
 )
 
 LOCKER_FIXED_REMARK = (
@@ -58,39 +66,78 @@ class RemarkResult:
     review_items: list[RemarkReview]
 
 
-def parse_overdue_sheet(ws) -> list[OverdueRecord]:
+def _sheet_rows(ws) -> list[tuple]:
+    return [tuple(r) for r in ws.iter_rows(values_only=True)]
+
+
+def _append_notes(issues: list[InputIssue] | None, source: str, notes: list[str]) -> None:
+    if issues is None:
+        return
+    for note in notes:
+        issues.append(InputIssue(source, note, advisory=True))
+
+
+def parse_overdue_sheet(ws, issues: list[InputIssue] | None = None) -> list[OverdueRecord]:
+    """연체료 목록. 헤더 이름으로 열을 찾고, 읽지 못한 행은 issues에 기록."""
+    source = "연체료목록"
+    rows = _sheet_rows(ws)
+    cols = resolve_columns(rows, OVERDUE_COLUMNS, source)
+    _append_notes(issues, source, cols.notes)
+
     records: list[OverdueRecord] = []
-    for row in ws.iter_rows(min_row=2, values_only=True):
-        name = row[2]
-        if not name:
+    for row_no, row in enumerate(rows[cols.header_row:], start=cols.header_row + 1):
+        if is_blank_row(row):
             continue
-        fee = parse_amount(row[3])
-        if fee is None:
-            fee = 0
+        name = cols.get(row, "name")
+        if name is None or not str(name).strip():
+            continue
+        raw_fee = cols.get(row, "fee")
+        fee, ok = parse_amount_value(raw_fee)
+        if not ok:
+            if issues is not None:
+                issues.append(InputIssue(
+                    source, f"'{str(name).strip()}'의 연체료를 숫자로 읽지 못해 제외했습니다 "
+                            f"(값: '{raw_fee}').", row=row_no))
+            continue
+        note = cols.get(row, "note")
+        goods = cols.get(row, "goods")
         records.append(
             OverdueRecord(
-                return_date=row[0],
-                goods=str(row[1] or ""),
+                return_date=parse_date_value(cols.get(row, "return_date")),
+                goods=str(goods or "").strip(),
                 name=str(name).strip(),
-                fee=fee,
-                note=str(row[4]).strip() if row[4] else None,
+                fee=fee or 0,
+                note=str(note).strip() if note is not None and str(note).strip() else None,
             )
         )
     return records
 
 
-def parse_refund_sheet(ws) -> list[RefundRecord]:
+def parse_refund_sheet(ws, issues: list[InputIssue] | None = None) -> list[RefundRecord]:
+    """환불자 목록. 헤더 이름으로 열을 찾는다(이름·사유 중심, 연락처·계좌는 읽지 않음)."""
+    source = "환불자목록"
+    rows = _sheet_rows(ws)
+    if not any(not is_blank_row(r) for r in rows[1:]):
+        return []
+    cols = resolve_columns(rows, REFUND_COLUMNS, source)
+    _append_notes(issues, source, cols.notes)
+
     records: list[RefundRecord] = []
-    for row in ws.iter_rows(min_row=2, values_only=True):
-        name = row[1]
-        if not name:
+    for row in rows[cols.header_row:]:
+        if is_blank_row(row):
             continue
+        name = cols.get(row, "name")
+        if name is None or not str(name).strip():
+            continue
+        locker = cols.get(row, "locker")
+        reason = cols.get(row, "reason")
+        amount, _ = parse_amount_value(cols.get(row, "amount"))
         records.append(
             RefundRecord(
-                locker_no=str(row[0]) if row[0] is not None else None,
+                locker_no=str(locker).strip() if locker is not None else None,
                 name=str(name).strip(),
-                amount=parse_amount(row[3]),
-                reason=str(row[4]).strip() if row[4] else None,
+                amount=amount,
+                reason=str(reason).strip() if reason is not None and str(reason).strip() else None,
             )
         )
     return records

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Sequence
 
 from .parse_ledger import LedgerRow, Page, split_pages
 from .remarks import (
@@ -13,6 +13,7 @@ from .remarks import (
     build_page_remark,
 )
 from .semester_config import SemesterConfig
+from .sheet_reader import InputIssue
 from .utils import format_amount, format_date
 
 
@@ -115,7 +116,7 @@ def _fill_page(
                         business_no=business_no,
                         page_index=page_index,
                         target=_page_target(rows),
-                        reason="장부 구분(F열) 공백",
+                        reason="장부 구분 칸 공백",
                     )
                 )
                 break
@@ -258,8 +259,14 @@ def result_to_preview_dict(result: EngineResult) -> dict[str, Any]:
     return preview
 
 
-def format_review_report(review_items: list[ReviewItem]) -> str:
-    lines = [item.format_line() for item in review_items]
+def format_review_report(
+    review_items: list[ReviewItem],
+    input_issues: Sequence[InputIssue] = (),
+) -> str:
+    """검수목록.txt — 입력 파일에서 제외·확인할 항목을 먼저, 그다음 페이지별 검수 항목."""
+    lines = [i.format_line() for i in input_issues if not i.advisory]
+    lines += [i.format_line() for i in input_issues if i.advisory]
+    lines += [item.format_line() for item in review_items]
     return "\n".join(lines) + ("\n" if lines else "")
 
 
@@ -289,8 +296,9 @@ def export_hwpx_files(
     template_path: str,
     output_dir: str,
     filename_prefix: str | None = None,
+    author: dict[str, str] | None = None,
 ) -> list[str]:
-    """사업명별 .hwpx 파일을 output_dir에 생성."""
+    """사업명별 .hwpx 파일을 output_dir에 생성. author는 모든 페이지의 작성자 칸에 들어간다."""
     from .fill_hwpx import fill_document
 
     prefix = filename_prefix or "수입지출내역서"
@@ -298,7 +306,7 @@ def export_hwpx_files(
     for business_no, biz in sorted(result.businesses.items()):
         if not biz.pages:
             continue
-        pages = [filled_page_to_hwpx_dict(p) for p in biz.pages]
+        pages = [{**(author or {}), **filled_page_to_hwpx_dict(p)} for p in biz.pages]
         out_name = f"{prefix}_{business_no}_{biz.business_name}.hwpx"
         out_path = os.path.join(output_dir, out_name)
         fill_document(template_path, pages, out_path)

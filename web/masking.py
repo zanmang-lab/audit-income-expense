@@ -8,6 +8,8 @@ from typing import Any
 import openpyxl
 from openpyxl import Workbook
 
+from src.sheet_reader import REFUND_COLUMNS, resolve_columns
+
 # 엔진(parse_refund_sheet)이 기대하는 열 위치: 0=사물함, 1=이름, 3=금액, 4=사유
 ENGINE_COL_LOCKER = 0
 ENGINE_COL_NAME = 1
@@ -62,28 +64,6 @@ def _column_pattern_sensitive(values: list[str], threshold: float = 0.5) -> bool
     )
 
 
-def _semantic_column_map(headers: list[str]) -> dict[str, int | None]:
-    mapping: dict[str, int | None] = {
-        "locker": None,
-        "name": None,
-        "amount": None,
-        "reason": None,
-    }
-    for idx, header in enumerate(headers):
-        h = _norm_header(header)
-        if not h:
-            continue
-        if mapping["locker"] is None and "사물함" in h:
-            mapping["locker"] = idx
-        elif mapping["name"] is None and "이름" in h:
-            mapping["name"] = idx
-        elif mapping["amount"] is None and ("환불" in h or "금액" in h):
-            mapping["amount"] = idx
-        elif mapping["reason"] is None and "사유" in h:
-            mapping["reason"] = idx
-    return mapping
-
-
 def detect_sensitive_columns(headers: list[str], data_rows: list[tuple]) -> list[str]:
     """드롭 대상 열의 헤더명 목록."""
     return detect_sensitive_columns_from_rows(headers, data_rows)
@@ -105,21 +85,28 @@ def mask_refund_workbook(source: bytes) -> tuple[bytes, list[str]]:
         out.save(buf)
         return buf.getvalue(), []
 
-    headers = [_cell_text(h) for h in rows[0]]
-    dropped_names = detect_sensitive_columns_from_rows(headers, rows[1:])
-    semantic = _semantic_column_map(headers)
+    cols = resolve_columns(rows, REFUND_COLUMNS, "환불자목록")
+    header_idx = cols.header_row - 1
+    headers = [_cell_text(h) for h in rows[header_idx]]
+    data_rows = rows[header_idx + 1:]
+    dropped_names = detect_sensitive_columns_from_rows(headers, data_rows)
+    sensitive = _sensitive_indices(headers, data_rows)
+    # 열 순서로 읽는 경우에도 민감정보 열은 절대 옮겨 담지 않는다.
+    for key, idx in list(cols.indices.items()):
+        if idx is not None and idx in sensitive:
+            cols.indices[key] = None
 
     wb_out = Workbook()
     out_ws = wb_out.active
     out_ws.append(["사물함 번호", "이름", None, "환불금액", "사유", None])
 
-    for row in rows[1:]:
+    for row in data_rows:
         if not any(row):
             continue
-        locker = _value_at(row, semantic["locker"])
-        name = _value_at(row, semantic["name"])
-        amount = _value_at(row, semantic["amount"])
-        reason = _value_at(row, semantic["reason"])
+        locker = cols.get(row, "locker")
+        name = cols.get(row, "name")
+        amount = cols.get(row, "amount")
+        reason = cols.get(row, "reason")
         if not name:
             continue
         normalized = [None] * 6
@@ -134,10 +121,18 @@ def mask_refund_workbook(source: bytes) -> tuple[bytes, list[str]]:
     return buf.getvalue(), dropped_names
 
 
-def _value_at(row: tuple, index: int | None) -> Any:
-    if index is None or index >= len(row):
-        return None
-    return row[index]
+def _sensitive_indices(headers: list[str], data_rows: list[tuple]) -> set[int]:
+    width = max([len(headers)] + [len(r) for r in data_rows])
+    found: set[int] = set()
+    for idx in range(width):
+        header = headers[idx] if idx < len(headers) else ""
+        if header and _header_is_sensitive(header):
+            found.add(idx)
+            continue
+        values = [_cell_text(r[idx]) if idx < len(r) else "" for r in data_rows]
+        if _column_pattern_sensitive(values):
+            found.add(idx)
+    return found
 
 
 def detect_sensitive_columns_from_rows(

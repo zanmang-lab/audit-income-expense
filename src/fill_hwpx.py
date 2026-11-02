@@ -39,6 +39,14 @@ DATA_ROWS = list(range(13, 26))        # rowAddr 13~25 = 13줄
 SEMOK_COL, QTY_COL, PRICE_COL = 0, 2, 5
 MULTILINE_FIELDS = {"비고"}
 
+# 좌표 대신 '라벨 오른쪽 칸'으로 찾는 작성자 정보 (양식마다 위치가 달라도 동작)
+LABEL_FIELDS: dict[str, tuple[str, ...]] = {
+    "성명": ("성명", "작성자"),
+    "직위": ("직위", "직책"),
+    "소속": ("소속",),
+    "연락처": ("연락처", "전화번호", "연락처(전화)"),
+}
+
 
 def _esc(s: str) -> str:
     return str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
@@ -105,11 +113,67 @@ def _set_cell_text(cell_xml: str, text: str, multiline: bool = False) -> str:
         return _runs_for_text(char_pr_ref, text, multiline)
 
     return re.sub(
-        r'<hp:run charPrIDRef="\d+"><hp:t></hp:t></hp:run>',
+        r'<hp:run charPrIDRef="\d+"><hp:t(?:></hp:t>|/>)</hp:run>',
         repl_empty_t,
         cell_xml,
         count=1,
     )
+
+
+def _replace_cell_text(cell_xml: str, text: str) -> str:
+    """칸에 글자가 이미 있으면 바꾸고, 비어 있으면 채운다(양식에 예전 작성자가 적혀 있는 경우)."""
+    if not re.search(r"<hp:t>[^<]+</hp:t>", cell_xml):
+        return _set_cell_text(cell_xml, text)
+    done = False
+
+    def repl(m):
+        nonlocal done
+        if done:
+            return "<hp:t></hp:t>"
+        done = True
+        return f"<hp:t>{_esc(text)}</hp:t>"
+
+    return re.sub(r"<hp:t>[^<]*</hp:t>|<hp:t/>", repl, cell_xml)
+
+
+def _cell_info(cell_xml: str) -> tuple[int, int, int, str] | None:
+    """(row, col, colSpan, 정규화한 글자)."""
+    addr = re.search(r'colAddr="(\d+)" rowAddr="(\d+)"', cell_xml)
+    if not addr:
+        return None
+    span = re.search(r'colSpan="(\d+)"', cell_xml)
+    text = "".join(re.findall(r"<hp:t>([^<]*)</hp:t>", cell_xml))
+    return int(addr.group(2)), int(addr.group(1)), int(span.group(1)) if span else 1, re.sub(r"\s+", "", text)
+
+
+def find_label_targets(table_xml: str, fields: dict[str, tuple[str, ...]] = LABEL_FIELDS) -> dict[str, tuple[int, int]]:
+    """라벨 칸(예: '성명') 바로 오른쪽 칸의 좌표를 찾는다. 기존 좌표 칸과 겹치면 쓰지 않는다."""
+    infos = [i for i in (_cell_info(c) for c in re.findall(r"<hp:tc\b.*?</hp:tc>", table_xml, re.S)) if i]
+    by_pos = {(r, c): (r, c) for r, c, _, _ in infos}
+    targets: dict[str, tuple[int, int]] = {}
+    for field, labels in fields.items():
+        for r, c, span, text in infos:
+            if text in labels:
+                pos = (r, c + span)
+                if pos in by_pos and pos not in SCALAR_CELLS and r not in DATA_ROWS:
+                    targets[field] = pos
+                break
+    return targets
+
+
+def _table_paragraph(xml: str) -> str:
+    tm = re.search(r'(<hp:p\b[^>]*>(?:(?!</hp:p>).)*?<hp:tbl\b.*?</hp:tbl>.*?</hp:p>)', xml, re.S)
+    if not tm:
+        raise RuntimeError("양식에서 표 문단을 찾지 못했습니다.")
+    return tm.group(1)
+
+
+def missing_label_fields(template_path: str, fields: list[str]) -> list[str]:
+    """양식에서 라벨을 찾지 못한 작성자 정보 항목."""
+    with zipfile.ZipFile(template_path) as z:
+        xml = z.read(SECTION).decode("utf-8")
+    targets = find_label_targets(_table_paragraph(xml))
+    return [f for f in fields if f not in targets]
 
 
 def _cell_addr(cell_xml: str):
@@ -117,14 +181,19 @@ def _cell_addr(cell_xml: str):
     return (int(m.group(2)), int(m.group(1))) if m else (None, None)
 
 
-def _fill_table(table_para_xml: str, page: dict) -> str:
+def _fill_table(table_para_xml: str, page: dict, label_targets: dict | None = None) -> str:
     cells = re.findall(r'<hp:tc\b.*?</hp:tc>', table_para_xml, re.S)
     out = table_para_xml
     rows = page.get("rows", [])
+    by_pos = {pos: field for field, pos in (label_targets or {}).items()}
     for c in cells:
         r, col = _cell_addr(c)
         new_c = None
-        if (r, col) in SCALAR_CELLS:
+        if (r, col) in by_pos:
+            val = page.get(by_pos[(r, col)], "")
+            if val:
+                new_c = _replace_cell_text(c, val)
+        elif (r, col) in SCALAR_CELLS:
             field = SCALAR_CELLS[(r, col)]
             val = page.get(field, "")
             if val != "":
@@ -147,13 +216,11 @@ def _fill_table(table_para_xml: str, page: dict) -> str:
 def _build_section_xml(template_dir: str, pages: list) -> str:
     xml = open(os.path.join(template_dir, SECTION), encoding="utf-8").read()
     # 표를 감싼 문단 <hp:p ...> ... <hp:tbl>...</hp:tbl> ... </hp:p> 통째 추출
-    tm = re.search(r'(<hp:p\b[^>]*>(?:(?!</hp:p>).)*?<hp:tbl\b.*?</hp:tbl>.*?</hp:p>)', xml, re.S)
-    if not tm:
-        raise RuntimeError("양식에서 표 문단을 찾지 못했습니다.")
-    table_para = tm.group(1)
+    table_para = _table_paragraph(xml)
+    label_targets = find_label_targets(table_para)
     blocks = []
     for i, pg in enumerate(pages):
-        b = _fill_table(table_para, pg)
+        b = _fill_table(table_para, pg, label_targets)
         if i > 0:
             b = b.replace('pageBreak="0"', 'pageBreak="1"', 1)  # 2페이지부터 페이지나눔
         blocks.append(b)

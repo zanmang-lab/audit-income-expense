@@ -19,11 +19,22 @@ class PipelineError(Exception):
 
 def format_error_detail(stage: str, exc: BaseException) -> str:
     """사용자에게 보여줄 오류 문구: 단계 + 예외 + 발생 위치."""
-    location = _exception_location(exc)
     message = str(exc).strip() or repr(exc)
+    if is_user_input_error(exc):
+        return f"[{stage}] {message}"
+    location = _exception_location(exc)
     if location:
         return f"[{stage}] {type(exc).__name__}: {message} (위치: {location})"
     return f"[{stage}] {type(exc).__name__}: {message}"
+
+
+def is_user_input_error(exc: BaseException) -> bool:
+    """사용자가 올린 파일 모양 문제(열 못 찾음 등) — 코드 위치 대신 안내만 보여준다."""
+    from src.sheet_reader import ColumnError
+
+    if isinstance(exc, PipelineError):
+        exc = exc.cause
+    return isinstance(exc, ColumnError)
 
 
 def _exception_location(exc: BaseException) -> str:

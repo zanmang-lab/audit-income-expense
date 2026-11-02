@@ -108,6 +108,29 @@
         {% endif %}
       </section>
 
+      {% if input_required or input_advisory %}
+      <section class="space-y-4">
+        <h3 class="text-headline-md font-headline-md text-on-surface px-1">입력 파일 확인</h3>
+        <p class="text-body-md text-on-surface-variant px-1">
+          엑셀에서 읽지 못했거나 제외한 행입니다. <strong>입력확인</strong> 항목은 결과 문서에 빠져 있으니 엑셀을 고친 뒤 다시 생성하세요.
+        </p>
+        <div class="space-y-3">
+          {% for item in input_required %}
+          <div class="bg-white border border-error rounded-lg p-4 flex items-start gap-4">
+            <span class="bg-error text-on-error px-2 py-1 rounded text-label-md font-label-md whitespace-nowrap shrink-0">입력확인</span>
+            <p class="text-body-md text-on-surface leading-relaxed">{{ item }}</p>
+          </div>
+          {% endfor %}
+          {% for item in input_advisory %}
+          <div class="bg-white border border-outline-variant rounded-lg p-4 flex items-start gap-4">
+            <span class="bg-amber-100 text-amber-800 border border-amber-200 px-2 py-1 rounded text-label-md font-label-md whitespace-nowrap shrink-0">참고</span>
+            <p class="text-body-md text-on-surface-variant leading-relaxed">{{ item }}</p>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
       <section class="space-y-4">
         <h3 class="text-headline-md font-headline-md text-on-surface px-1">상세 검수 항목</h3>
         {% if not review_required and not review_advisory %}
@@ -153,7 +176,7 @@
             <div class="space-y-1">
               <p class="text-label-md font-label-md text-on-surface font-bold">Zip 파일 구성</p>
               <ul class="text-body-md text-on-surface-variant list-disc list-inside space-y-1">
-                <li>사업별 수입지출내역서 (.hwp)</li>
+                <li>사업별 수입지출내역서 ({% if output_format == 'hwp' %}.hwp{% else %}.hwpx{% endif %})</li>
                 <li>검수목록.txt</li>
                 <li>연체료규정_추출.json</li>
                 <li>사업개요.txt</li>

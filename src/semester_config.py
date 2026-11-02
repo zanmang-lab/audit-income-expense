@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +19,7 @@ DEFAULT_LOCKER_REFUND_ADVISORY = (
 DEFAULT_FILM_FEE_PER_SHEET = 1000
 DEFAULT_LEDGER_SHEET = "DATA (2)"
 DEFAULT_LABEL = "수입지출내역서"
+AUTHOR_FIELDS = ("성명", "직위", "소속", "연락처")
 
 # 하위 호환: 기존 사업번호 체계
 LEGACY_ROLE_BY_NUMBER: dict[str, str] = {
@@ -49,6 +50,8 @@ class SemesterConfig:
             {"default_per_day": 2000, "categories": []}
         )
     )
+    # 작성자 정보 — 양식의 '성명/직위/소속/연락처' 라벨 오른쪽 칸에 채운다.
+    author: dict[str, str] = field(default_factory=dict)
 
     def role_for(self, business_no: int) -> str:
         entry = self.businesses.get(business_no)
@@ -167,9 +170,17 @@ def parse_semester_config_data(data: dict[str, Any]) -> SemesterConfig:
     if overdue_raw is None:
         raise ValueError("overdue_rules가 필요합니다.")
 
+    author_raw = data.get("author") or {}
+    author = {
+        str(k).strip(): str(v).strip()
+        for k, v in author_raw.items()
+        if v is not None and str(v).strip() and str(k).strip() in AUTHOR_FIELDS
+    } if isinstance(author_raw, dict) else {}
+
     return SemesterConfig(
-        label=DEFAULT_LABEL,
+        label=label,
         ledger_sheet=ledger_sheet,
+        author=author,
         businesses=_parse_businesses(businesses_raw),
         locker_deposit_remark=str(
             locker_block.get("deposit_remark", DEFAULT_LOCKER_DEPOSIT_REMARK)
@@ -224,15 +235,7 @@ def merge_business_names(
             name=name,
             role=infer_role_from_name(name, business_no),
         )
-    return SemesterConfig(
-        label=config.label,
-        ledger_sheet=config.ledger_sheet,
-        businesses=businesses,
-        locker_deposit_remark=config.locker_deposit_remark,
-        locker_refund_advisory=config.locker_refund_advisory,
-        film_fee_per_sheet=config.film_fee_per_sheet,
-        overdue_rules=config.overdue_rules,
-    )
+    return replace(config, businesses=businesses)
 
 
 def semester_config_to_dict(config: SemesterConfig) -> dict[str, Any]:
@@ -249,6 +252,7 @@ def semester_config_to_dict(config: SemesterConfig) -> dict[str, Any]:
             "refund_fee_advisory": config.locker_refund_advisory,
         },
         "rental": {"film_fee_per_sheet": config.film_fee_per_sheet},
+        "author": dict(config.author),
         "overdue_rules": {
             "default_per_day": config.overdue_rules.default_per_day,
             "categories": [

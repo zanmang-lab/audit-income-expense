@@ -63,16 +63,17 @@ def main() -> int:
     overdue_path = _require_input(OVERDUE_FILE)
     refund_path = _require_input(REFUND_FILE)
 
+    input_issues: list = []
     overdue_wb = openpyxl.load_workbook(overdue_path, read_only=True, data_only=True)
-    overdue_records = parse_overdue_sheet(overdue_wb.active)
+    overdue_records = parse_overdue_sheet(overdue_wb.active, issues=input_issues)
     overdue_wb.close()
 
     refund_wb = openpyxl.load_workbook(refund_path, read_only=True, data_only=True)
-    refund_records = parse_refund_sheet(refund_wb.active)
+    refund_records = parse_refund_sheet(refund_wb.active, issues=input_issues)
     refund_wb.close()
 
     ledger_wb = load_ledger_workbook(ledger_path)
-    ledger_by_business = parse_ledger_workbook(ledger_wb, semester=semester)
+    ledger_by_business = parse_ledger_workbook(ledger_wb, semester=semester, issues=input_issues)
     ledger_wb.close()
 
     result = run_engine(
@@ -88,7 +89,9 @@ def main() -> int:
     with preview_path.open("w", encoding="utf-8") as f:
         json.dump(result_to_preview_dict(result), f, ensure_ascii=False, indent=2)
 
-    review_path.write_text(format_review_report(result.review_items), encoding="utf-8")
+    review_path.write_text(
+        format_review_report(result.review_items, input_issues), encoding="utf-8"
+    )
 
     if not TEMPLATE_PATH.exists():
         print(f"오류: 양식 파일 없음 — {TEMPLATE_PATH}", file=sys.stderr)
@@ -99,6 +102,7 @@ def main() -> int:
         template_path=str(TEMPLATE_PATH),
         output_dir=str(OUTPUT_DIR),
         filename_prefix=semester.label,
+        author=semester.author,
     )
 
     hwp_paths: list[str] = []
@@ -113,6 +117,7 @@ def main() -> int:
     print(f"  처리한 사업 수: {len(result.businesses)}")
     print(f"  총 페이지 수:   {total_pages}")
     print(f"  검수필요 건수:  {len(result.review_items)}")
+    print(f"  입력확인 건수:  {len(input_issues)}")
     print(f"  preview:        {preview_path}")
     print(f"  검수목록:       {review_path}")
     print(f"  hwp 파일:       {len(hwp_paths)}개 → {OUTPUT_DIR}")
