@@ -5,7 +5,8 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, Sequence
 
-from .parse_ledger import LedgerRow, Page, split_pages
+from .parse_ledger import MAX_ROWS_PER_PAGE, LedgerRow, Page, split_pages
+from .template_layout import TemplateLayout
 from .remarks import (
     OverdueRecord,
     RefundRecord,
@@ -155,6 +156,7 @@ def _fill_page(
                 page_index=page_index,
                 target=item.target or _page_target(rows),
                 reason=item.reason,
+                advisory=item.advisory,
             )
         )
 
@@ -205,6 +207,7 @@ def run_engine(
     semester: SemesterConfig,
     overdue_records: list[OverdueRecord],
     refund_records: list[RefundRecord],
+    max_rows_per_page: int = MAX_ROWS_PER_PAGE,
 ) -> EngineResult:
     businesses: dict[int, BusinessOutput] = {}
     all_reviews: list[ReviewItem] = []
@@ -212,7 +215,7 @@ def run_engine(
 
     for business_no in sorted(ledger_by_business):
         rows = ledger_by_business[business_no]
-        pages = split_pages(rows)
+        pages = split_pages(rows, max_rows_per_page)
         business_name = business_name_map.get(str(business_no), "")
         output = BusinessOutput(business_no=business_no, business_name=business_name)
 
@@ -274,11 +277,6 @@ def format_review_report(
 def filled_page_to_hwpx_dict(page: FilledPage) -> dict[str, Any]:
     """fill_hwpx.fill_document이 받는 페이지 dict로 변환."""
     rows = list(zip(page.items, page.quantities, page.unit_prices))
-    if len(rows) > 13:
-        raise ValueError(
-            f"페이지 '{page.business_no_label}' 세목 {len(rows)}줄 — "
-            f"13줄 분할이 필요합니다."
-        )
     return {
         "사업번호": page.business_no_label,
         "사업명": page.business_name,
@@ -298,6 +296,8 @@ def export_hwpx_files(
     output_dir: str,
     filename_prefix: str | None = None,
     author: dict[str, str] | None = None,
+    layout: TemplateLayout | None = None,
+    problems: list[str] | None = None,
 ) -> list[str]:
     """사업명별 .hwpx 파일을 output_dir에 생성. author는 모든 페이지의 작성자 칸에 들어간다."""
     from .fill_hwpx import fill_document
@@ -310,6 +310,6 @@ def export_hwpx_files(
         pages = [{**(author or {}), **filled_page_to_hwpx_dict(p)} for p in biz.pages]
         out_name = f"{prefix}_{business_no}_{biz.business_name}.hwpx"
         out_path = os.path.join(output_dir, out_name)
-        fill_document(template_path, pages, out_path)
+        fill_document(template_path, pages, out_path, layout=layout, problems=problems)
         written.append(out_path)
     return written

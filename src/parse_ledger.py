@@ -221,8 +221,8 @@ def parse_ledger_workbook(
     return grouped
 
 
-def split_pages(rows: list[LedgerRow]) -> list[Page]:
-    """사업번호 내 행을 페이지 키 기준으로 분할. 키가 같아도 13줄이면 새 페이지."""
+def split_pages(rows: list[LedgerRow], max_rows: int = MAX_ROWS_PER_PAGE) -> list[Page]:
+    """사업번호 내 행을 페이지 키 기준으로 분할. 키가 같아도 max_rows줄(양식 세목 줄 수)이면 새 페이지."""
     pages: list[Page] = []
     current: Page | None = None
 
@@ -233,7 +233,7 @@ def split_pages(rows: list[LedgerRow]) -> list[Page]:
         if (
             current is None
             or current.key != key
-            or len(current.rows) >= MAX_ROWS_PER_PAGE
+            or len(current.rows) >= max_rows
         ):
             current = Page(
                 date=row.date,

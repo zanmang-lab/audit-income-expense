@@ -18,6 +18,8 @@ from src.semester_config import parse_semester_config_data
 from web.semester_inputs import build_semester_from_overview, parse_business_overview
 from web.settings_file import build_settings, parse_rules_text
 
+from hwpx_builder import build_hwpx, standard_cells
+
 OVERDUE_RULES = parse_overdue_rules_data({
     "default_per_day": 2000,
     "categories": [{"per_day": 1000, "keywords": ["보조배터리"]}, {"per_day": 3000, "keywords": ["폴라로이드"]}],
@@ -214,17 +216,7 @@ def _xlsx(rows):
 
 
 def _mini_template() -> bytes:
-    xml = (
-        '<hs:sec><hp:p id="0" pageBreak="0"><hp:run><hp:tbl><hp:tr>'
-        '<hp:tc><hp:subList><hp:p><hp:run charPrIDRef="1"/></hp:p></hp:subList>'
-        '<hp:cellAddr colAddr="3" rowAddr="1"/><hp:cellSpan colSpan="1" rowSpan="1"/></hp:tc>'
-        '</hp:tr></hp:tbl></hp:run></hp:p></hs:sec>'
-    )
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w") as z:
-        z.writestr("mimetype", "application/hwp+zip", compress_type=zipfile.ZIP_STORED)
-        z.writestr("Contents/section0.xml", xml)
-    return buf.getvalue()
+    return build_hwpx(standard_cells())
 
 
 @pytest.fixture()
@@ -259,6 +251,9 @@ def _post(client, rules_json=""):
 def test_web_settings_json_in_zip(client):
     rules = json.dumps({"환불페이지_키워드": ["반환"]}, ensure_ascii=False)
     r = _post(client, rules)
+    assert r.status_code == 200, r.text[:500]
+    preview_id = r.text.split('action="/build/')[1].split('"')[0]
+    r = client.post(f"/build/{preview_id}", data={})
     assert r.status_code == 200, r.text[:500]
     job = r.text.split("/download/")[1].split('"')[0]
     z = zipfile.ZipFile(io.BytesIO(client.get(f"/download/{job}").content))

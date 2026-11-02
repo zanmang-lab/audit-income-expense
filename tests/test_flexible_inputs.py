@@ -9,6 +9,7 @@ import openpyxl
 import pytest
 
 from src.fill_hwpx import fill_document, missing_label_fields
+from src.template_layout import LEGACY_LAYOUT
 from src.parse_ledger import parse_ledger_workbook
 from src.remarks import parse_overdue_sheet, parse_refund_sheet
 from src.semester_config import parse_semester_config_data
@@ -284,7 +285,8 @@ def test_author_filled_next_to_labels(tmp_path):
         _cell(5, 0, "성 명", 3), _cell(5, 3, colspan=2), _cell(5, 5, "직위"), _cell(5, 6, "예전총무", 2),
     ])
     out = tmp_path / "out.hwpx"
-    fill_document(str(tpl), [{"사업번호": "1-1", "성명": "홍길동", "직위": "사무국 총무", "rows": []}], str(out))
+    fill_document(str(tpl), [{"사업번호": "1-1", "성명": "홍길동", "직위": "사무국 총무", "rows": []}], str(out),
+                  layout=LEGACY_LAYOUT)
     cells = _cells_text(out)
     assert cells[(1, 3)] == "1-1"
     assert cells[(5, 3)] == "홍길동"
@@ -293,7 +295,7 @@ def test_author_filled_next_to_labels(tmp_path):
 
 def test_missing_author_labels_are_reported(tmp_path):
     tpl = _mini_template(tmp_path, [_cell(5, 0, "성명", 3), _cell(5, 3, colspan=2)])
-    assert missing_label_fields(str(tpl), ["성명", "소속"]) == ["소속"]
+    assert missing_label_fields(str(tpl), ["성명", "소속"], layout=LEGACY_LAYOUT) == ["소속"]
 
 
 def test_wrong_file_as_ledger_is_user_error():

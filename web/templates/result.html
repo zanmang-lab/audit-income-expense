@@ -9,7 +9,13 @@
 
   <main class="flex-grow pt-8 pb-12 px-4 sm:px-6">
     <div class="max-w-[800px] mx-auto space-y-8">
-      <nav>
+      <nav class="flex gap-6 flex-wrap">
+        {% if preview_id %}
+        <a href="/preview/{{ preview_id }}" class="flex items-center gap-2 text-primary font-label-md hover:underline transition-opacity">
+          <span class="material-symbols-outlined text-[18px]">edit_note</span>
+          미리보기로 돌아가 다시 고치기
+        </a>
+        {% endif %}
         <a href="/" class="flex items-center gap-2 text-primary font-label-md hover:underline transition-opacity">
           <span class="material-symbols-outlined text-[18px]">arrow_back</span>
           다시 업로드
@@ -23,6 +29,7 @@
         </div>
         <p class="text-body-lg font-body-lg text-on-surface-variant">
           문서 생성이 끝났습니다. 검수 목록을 확인한 뒤 zip을 다운로드하세요.
+          {% if edit_count %}미리보기에서 고친 칸 {{ edit_count }}개가 반영되었습니다.{% endif %}
         </p>
       </section>
 

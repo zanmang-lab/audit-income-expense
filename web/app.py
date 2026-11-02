@@ -7,7 +7,7 @@ import sys
 import time
 import uuid
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from io import BytesIO
 from pathlib import Path
 
@@ -29,7 +29,8 @@ from src.parse_overdue_rules_image import (
 from src.export_hwp import hwp_conversion_available
 from web.errors import PipelineError, format_error_detail, is_user_input_error, run_stage
 from web.masking import mask_refund_workbook
-from web.runner import PipelineResult, run_pipeline_from_uploads
+from web.preview import build_preview_view, parse_edit_form
+from web.runner import PipelineResult, PreparedRun, build_run, prepare_run
 from web.form_examples import upload_form_examples_html
 from web.sample_files import ensure_example_files, resolve_example_path
 from src.rules_config import TEMPLATE_FIELDS, RulesError
@@ -50,7 +51,8 @@ EXAMPLES_DIR = PROJECT_ROOT / "examples"
 TEMPLATES_DIR = PROJECT_ROOT / "web" / "templates"
 
 MAX_FILE_BYTES = 15 * 1024 * 1024
-JOB_TTL_SECONDS = 600
+JOB_TTL_SECONDS = 600       # 다운로드 링크
+PREVIEW_TTL_SECONDS = 1800  # 미리보기에서 고치는 시간
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -63,6 +65,8 @@ async def lifespan(_app: FastAPI):
     yield
     for jid in list(_jobs.keys()):
         _remove_job(jid)
+    for pid in list(_previews.keys()):
+        _remove_preview(pid)
 
 
 app = FastAPI(title="수입지출내역서 자동 작성", lifespan=lifespan)
@@ -88,42 +92,46 @@ app.add_middleware(NoCacheHtmlMiddleware)
 @dataclass
 class DownloadJob:
     zip_path: Path
-    work_dir: Path
+    created_at: float
+
+
+@dataclass
+class PreviewJob:
+    """미리보기 단계 작업. 고친 내용은 prep.edits에 남고, 문서는 여러 번 다시 만들 수 있다."""
+
+    prep: PreparedRun
     created_at: float
     masking_ok: bool
     masking_message: str
-    business_count: int
-    page_count: int
-    hwp_count: int
-    output_format: str
-    hwp_conversion_note: str | None
-    required_count: int
-    advisory_count: int
     rules_summary: str
-    review_required: list[str]
-    review_advisory: list[str]
-    input_required: list[str]
-    input_advisory: list[str]
+    builds: list[str] = field(default_factory=list)
 
 
 _jobs: dict[str, DownloadJob] = {}
+_previews: dict[str, PreviewJob] = {}
 
 
 def _cleanup_expired_jobs() -> None:
     now = time.time()
-    expired = [jid for jid, job in _jobs.items() if now - job.created_at > JOB_TTL_SECONDS]
-    for jid in expired:
+    for jid in [j for j, job in _jobs.items() if now - job.created_at > JOB_TTL_SECONDS]:
         _remove_job(jid)
+    for pid in [p for p, job in _previews.items() if now - job.created_at > PREVIEW_TTL_SECONDS]:
+        _remove_preview(pid)
 
 
 def _remove_job(job_id: str) -> None:
     job = _jobs.pop(job_id, None)
+    if job and job.zip_path.exists():
+        job.zip_path.unlink(missing_ok=True)
+
+
+def _remove_preview(preview_id: str) -> None:
+    job = _previews.pop(preview_id, None)
     if not job:
         return
-    if job.zip_path.exists():
-        job.zip_path.unlink(missing_ok=True)
-    if job.work_dir.exists():
-        shutil.rmtree(job.work_dir, ignore_errors=True)
+    for jid in job.builds:
+        _jobs.pop(jid, None)
+    shutil.rmtree(job.prep.work_dir, ignore_errors=True)
 
 
 def _wants_html(request: Request) -> bool:
@@ -354,7 +362,7 @@ async def generate(
     )
 
     try:
-        result: PipelineResult = run_pipeline_from_uploads(
+        prep = prepare_run(
             ledger_source=BytesIO(ledger_bytes),
             overdue_source=BytesIO(overdue_bytes),
             refund_source=masked_refund,
@@ -372,51 +380,93 @@ async def generate(
         logger.exception("처리 중 예기치 않은 오류")
         raise HTTPException(500, format_error_detail("문서 생성", exc)) from exc
 
-    s = result.summary
-    required_items = [item for item in result.review_items if not item.advisory]
-    advisory_items = [item for item in result.review_items if item.advisory]
-
-    _jobs[job_id] = DownloadJob(
-        zip_path=result.zip_path,
-        work_dir=work_dir,
+    _previews[job_id] = PreviewJob(
+        prep=prep,
         created_at=time.time(),
         masking_ok=masking_ok,
         masking_message=masking_message,
-        business_count=s.business_count,
-        page_count=s.page_count,
-        hwp_count=s.hwp_count,
-        output_format=s.output_format,
-        hwp_conversion_note=s.hwp_conversion_note,
-        required_count=len(required_items),
-        advisory_count=len(advisory_items),
         rules_summary=rules_summary,
-        review_required=[item.format_line() for item in required_items],
-        review_advisory=[item.format_line() for item in advisory_items],
-        input_required=[i.format_line() for i in result.input_issues if not i.advisory],
-        input_advisory=[i.format_line() for i in result.input_issues if i.advisory],
+    )
+    return _render_preview(request, job_id)
+
+
+def _get_preview(preview_id: str) -> PreviewJob:
+    _cleanup_expired_jobs()
+    job = _previews.get(preview_id)
+    if not job:
+        raise HTTPException(404, "미리보기가 만료되었거나 존재하지 않습니다. 처음부터 다시 업로드해 주세요.")
+    return job
+
+
+def _render_preview(request: Request, preview_id: str, message: str = "") -> HTMLResponse:
+    job = _previews[preview_id]
+    return templates.TemplateResponse(
+        request,
+        "preview.html",
+        {
+            "preview_id": preview_id,
+            "view": build_preview_view(job.prep),
+            "masking_ok": job.masking_ok,
+            "masking_message": job.masking_message,
+            "rules_summary": job.rules_summary,
+            "expires_min": max(1, int((PREVIEW_TTL_SECONDS - (time.time() - job.created_at)) // 60)),
+            "message": message,
+        },
     )
 
-    job = _jobs[job_id]
+
+@app.get("/preview/{preview_id}", response_class=HTMLResponse)
+async def preview(request: Request, preview_id: str) -> HTMLResponse:
+    _get_preview(preview_id)
+    return _render_preview(request, preview_id)
+
+
+@app.post("/build/{preview_id}", response_class=HTMLResponse)
+async def build(request: Request, preview_id: str) -> HTMLResponse:
+    job = _get_preview(preview_id)
+    form = await request.form()
+    job.prep.set_edits(parse_edit_form(form))
+
+    try:
+        result: PipelineResult = build_run(job.prep)
+    except PipelineError as exc:
+        if is_user_input_error(exc):
+            raise HTTPException(400, str(exc)) from exc
+        logger.exception("문서 생성 오류")
+        raise HTTPException(500, str(exc)) from exc
+    except Exception as exc:
+        logger.exception("문서 생성 중 예기치 않은 오류")
+        raise HTTPException(500, format_error_detail("문서 생성", exc)) from exc
+
+    download_id = uuid.uuid4().hex
+    _jobs[download_id] = DownloadJob(zip_path=result.zip_path, created_at=time.time())
+    job.builds.append(download_id)
+
+    s = result.summary
+    required_items = [item for item in result.review_items if not item.advisory]
+    advisory_items = [item for item in result.review_items if item.advisory]
     return templates.TemplateResponse(
         request,
         "result.html",
         {
-            "job_id": job_id,
+            "job_id": download_id,
+            "preview_id": preview_id,
+            "edit_count": sum(len(v) for v in job.prep.edits.values()),
             "masking_ok": job.masking_ok,
             "masking_message": job.masking_message,
-            "business_count": job.business_count,
-            "page_count": job.page_count,
-            "hwp_count": job.hwp_count,
+            "business_count": s.business_count,
+            "page_count": s.page_count,
+            "hwp_count": s.hwp_count,
             "hwpx_count": s.hwpx_count,
-            "output_format": job.output_format,
-            "hwp_conversion_note": job.hwp_conversion_note,
-            "required_count": job.required_count,
-            "advisory_count": job.advisory_count,
+            "output_format": s.output_format,
+            "hwp_conversion_note": s.hwp_conversion_note,
+            "required_count": len(required_items),
+            "advisory_count": len(advisory_items),
             "rules_summary": job.rules_summary,
-            "review_required": job.review_required,
-            "review_advisory": job.review_advisory,
-            "input_required": job.input_required,
-            "input_advisory": job.input_advisory,
+            "review_required": [item.format_line() for item in required_items],
+            "review_advisory": [item.format_line() for item in advisory_items],
+            "input_required": [i.format_line() for i in result.input_issues if not i.advisory],
+            "input_advisory": [i.format_line() for i in result.input_issues if i.advisory],
         },
     )
 

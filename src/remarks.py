@@ -53,6 +53,29 @@ class RefundRecord:
 class RemarkReview:
     target: str
     reason: str
+    advisory: bool = False
+
+
+def _compact_name(name: str) -> str:
+    return "".join(str(name).split())
+
+
+def similar_names(name: str, pool: list[str], limit: int = 3) -> list[str]:
+    """띄어쓰기를 무시하고 비슷한 이름 후보(한 글자 차이 등)를 찾는다. 자동으로 고르지는 않는다."""
+    import difflib
+
+    target = _compact_name(name)
+    by_compact: dict[str, str] = {}
+    for n in pool:
+        by_compact.setdefault(_compact_name(n), n)
+    by_compact.pop(target, None)
+    hits = difflib.get_close_matches(target, list(by_compact), n=limit, cutoff=0.6)
+    return [by_compact[h] for h in hits]
+
+
+def _with_suggestions(reason: str, name: str, pool: list[str]) -> str:
+    hits = similar_names(name, pool)
+    return f"{reason} — 비슷한 이름: {', '.join(hits)}" if hits else reason
 
 
 @dataclass
@@ -374,11 +397,28 @@ def _build_rental_remark_for_row(
 ) -> RemarkResult:
     depositor_name = row.item_text.strip()
     amount = int(row.income)
-    reviews: list[str] = []
+    reviews: list[RemarkReview] = []
 
     direct, direct_err = _find_overdue_direct(
         overdue_records, depositor_name, amount, row.date
     )
+    if not direct and direct_err == "매칭 후보 없음":
+        # 띄어쓰기만 다른 이름('김 철수' ↔ '김철수')은 같은 사람으로 보고 알린다.
+        loose = [
+            r for r in overdue_records
+            if r.name != depositor_name and _compact_name(r.name) == _compact_name(depositor_name)
+        ]
+        if loose:
+            direct, direct_err = _disambiguate_records(
+                loose, amount, row.date,
+                amount_getter=lambda r: r.fee, date_getter=lambda r: r.return_date,
+            )
+            if direct:
+                reviews.append(RemarkReview(
+                    target=depositor_name,
+                    reason=f"띄어쓰기만 다른 이름 — 장부 '{depositor_name}'와 연체료목록 '{direct.name}'을 같은 사람으로 보았습니다",
+                    advisory=True,
+                ))
     if direct:
         line, line_reviews = _build_rental_remark_line(
             depositor_name=depositor_name,
@@ -415,6 +455,11 @@ def _build_rental_remark_for_row(
         return RemarkResult(text=line, review_items=reviews)
 
     err = direct_err or daenap_err or "연체료 목록 매칭 실패"
+    if err == "매칭 후보 없음":
+        err = _with_suggestions(
+            f"연체료 목록에서 '{depositor_name}'을(를) 찾지 못함", depositor_name,
+            [r.name for r in overdue_records],
+        )
     reviews.append(RemarkReview(target=depositor_name, reason=err))
     return RemarkResult(text="", review_items=reviews)
 
@@ -425,7 +470,11 @@ def _find_refund_by_name(
 ) -> tuple[RefundRecord | None, str | None]:
     candidates = [r for r in records if r.name == name]
     if not candidates:
-        return None, f"환불자 목록에서 '{name}' 매칭 실패"
+        candidates = [r for r in records if _compact_name(r.name) == _compact_name(name)]
+    if not candidates:
+        return None, _with_suggestions(
+            f"환불자 목록에서 '{name}' 매칭 실패", name, [r.name for r in records]
+        )
     if len(candidates) > 1:
         return None, f"환불자 목록에 '{name}' 동명이인 {len(candidates)}건"
     refund = candidates[0]
@@ -498,6 +547,12 @@ def _build_locker_refund_remark(
                 )
             )
             continue
+        if refund.name != name:
+            reviews.append(RemarkReview(
+                target=name,
+                reason=f"띄어쓰기만 다른 이름 — 장부 '{name}'와 환불자목록 '{refund.name}'을 같은 사람으로 보았습니다",
+                advisory=True,
+            ))
         entries.append((name, remark_rules.refund_phrase(refund.reason)))
 
     _append_grouped_refund_lines(lines, entries, remark_rules)

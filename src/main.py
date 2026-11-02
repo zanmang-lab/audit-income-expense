@@ -32,6 +32,7 @@ from src.pipeline import (
 from src.export_hwp import HwpConversionError, convert_hwpx_to_hwp
 from src.remarks import parse_overdue_sheet, parse_refund_sheet
 from src.semester_config import default_semester_config, load_semester_config
+from src.template_layout import analyze_template
 
 
 def _require_input(filename: str) -> Path:
@@ -59,6 +60,13 @@ def main() -> int:
 
     semester: SemesterConfig = _load_semester_config()
 
+    if not TEMPLATE_PATH.exists():
+        print(f"오류: 양식 파일 없음 — {TEMPLATE_PATH}", file=sys.stderr)
+        return 1
+    layout = analyze_template(str(TEMPLATE_PATH))
+    for note in layout.notes:
+        print(f"[양식] {note}", file=sys.stderr)
+
     ledger_path = _require_input(LEDGER_FILE)
     overdue_path = _require_input(OVERDUE_FILE)
     refund_path = _require_input(REFUND_FILE)
@@ -81,6 +89,7 @@ def main() -> int:
         semester=semester,
         overdue_records=overdue_records,
         refund_records=refund_records,
+        max_rows_per_page=layout.rows_per_page,
     )
 
     preview_path = OUTPUT_DIR / "preview.json"
@@ -93,17 +102,18 @@ def main() -> int:
         format_review_report(result.review_items, input_issues), encoding="utf-8"
     )
 
-    if not TEMPLATE_PATH.exists():
-        print(f"오류: 양식 파일 없음 — {TEMPLATE_PATH}", file=sys.stderr)
-        return 1
-
+    problems: list[str] = []
     hwpx_paths = export_hwpx_files(
         result,
         template_path=str(TEMPLATE_PATH),
         output_dir=str(OUTPUT_DIR),
         filename_prefix=semester.label,
         author=semester.author,
+        layout=layout,
+        problems=problems,
     )
+    for p in problems:
+        print(f"[양식] {p}", file=sys.stderr)
 
     hwp_paths: list[str] = []
     try:
