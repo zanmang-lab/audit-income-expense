@@ -6,6 +6,7 @@ import shutil
 import sys
 import time
 import uuid
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
@@ -51,7 +52,20 @@ TEMPLATES_DIR = PROJECT_ROOT / "web" / "templates"
 MAX_FILE_BYTES = 15 * 1024 * 1024
 JOB_TTL_SECONDS = 600
 
-app = FastAPI(title="수입지출내역서 자동 작성")
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """서버 시작 시 예시 파일 준비, 종료 시 임시 작업 폴더 정리."""
+    ensure_example_files(EXAMPLES_DIR)
+    if _ocr_package_available():
+        logger.info("rapidocr 패키지 확인됨 (모델은 첫 이미지 업로드 시 로드)")
+    else:
+        logger.warning("rapidocr 패키지 없음 — 연체료 이미지 인식 불가")
+    yield
+    for jid in list(_jobs.keys()):
+        _remove_job(jid)
+
+
+app = FastAPI(title="수입지출내역서 자동 작성", lifespan=lifespan)
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 logger = logging.getLogger(__name__)
 
@@ -190,15 +204,6 @@ def _ocr_package_available() -> bool:
     import importlib.util
 
     return importlib.util.find_spec("rapidocr") is not None
-
-
-@app.on_event("startup")
-async def startup_prepare_examples() -> None:
-    ensure_example_files(EXAMPLES_DIR)
-    if _ocr_package_available():
-        logger.info("rapidocr 패키지 확인됨 (모델은 첫 이미지 업로드 시 로드)")
-    else:
-        logger.warning("rapidocr 패키지 없음 — 연체료 이미지 인식 불가")
 
 
 @app.get("/api/health")
@@ -444,8 +449,3 @@ async def download(job_id: str) -> FileResponse:
         media_type="application/zip",
     )
 
-
-@app.on_event("shutdown")
-async def shutdown_cleanup() -> None:
-    for jid in list(_jobs.keys()):
-        _remove_job(jid)
