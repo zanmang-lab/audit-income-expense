@@ -58,7 +58,7 @@ def test_default_rules_reproduce_previous_sentences():
     assert _remark(page, sem, overdue).text.split("\n") == [
         "정하윤님 보조배터리 1개 대여 후 3일 연체되어 연체료 3,000원 부과",
         "오민재님 폴라로이드 필름 3장 추가로 소모하여 3,000원 부과",
-        "강도현('백서준'으로 입금)님 폴라로이드 1개 대여 후 2일 연체되어 연체료 6,000원 부과",
+        "강도현(‘백서준’으로 입금)님 폴라로이드 1개 대여 후 2일 연체되어 연체료 6,000원 부과",
     ]
 
 
@@ -117,7 +117,7 @@ def test_daenap_without_exact_apostrophe(note):
     sem = _semester()
     overdue = [OverdueRecord(None, "폴라로이드 1개", "강도현", 6000, note)]
     text = _remark(_page(_row("백서준", 6000)), sem, overdue).text
-    assert text.startswith("강도현('백서준'으로 입금)님 폴라로이드 1개")
+    assert text.startswith("강도현(‘백서준’으로 입금)님 폴라로이드 1개")
 
 
 def test_daenap_does_not_match_inside_longer_name():

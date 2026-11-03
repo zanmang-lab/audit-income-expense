@@ -6,8 +6,8 @@
   <style>
     .pv-table td, .pv-table th { border: 1px solid var(--pv-line, #c4c6cf); padding: 4px 8px; }
     .pv-edited { box-shadow: inset 3px 0 0 #B45309; }
-    body.only-review .pv-page:not(.pv-needs-review) { display: none; }
-    body.only-review .pv-biz:not(.pv-biz-review) { display: none; }
+    body.only-review .pv-page:not(.pv-needs-check) { display: none; }
+    body.only-review .pv-biz:not(.pv-biz-check) { display: none; }
   </style>
 </head>
 <body class="bg-background text-on-surface min-h-screen flex flex-col">
@@ -32,7 +32,7 @@
         {% if message %}<p class="text-body-md text-primary">{{ message }}</p>{% endif %}
       </section>
 
-      <section class="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <section class="grid grid-cols-2 md:grid-cols-5 gap-3">
         <div class="bg-surface-container-lowest border border-outline-variant p-4 rounded-xl">
           <p class="text-label-md text-on-surface-variant">사업</p>
           <p class="text-headline-md font-headline-md text-primary">{{ view.businesses|length }}개</p>
@@ -46,6 +46,11 @@
           <p class="text-label-md text-on-surface-variant">검수필요</p>
           <p class="text-headline-md font-headline-md {% if view.required_count %}text-error{% else %}text-primary{% endif %}">{{ view.required_count }}건</p>
         </div>
+        <div class="bg-surface-container-lowest border p-4 rounded-xl {% if view.auto_count %}border-[#1D4ED8]{% else %}border-outline-variant{% endif %}">
+          <p class="text-label-md text-on-surface-variant">자동처리</p>
+          <p class="text-headline-md font-headline-md {% if view.auto_count %}text-[#1D4ED8]{% else %}text-primary{% endif %}">{{ view.auto_count }}건</p>
+          <p class="text-[11px] text-on-surface-variant">프로그램이 계산·변환</p>
+        </div>
         <div class="bg-surface-container-lowest border p-4 rounded-xl {% if view.input_required %}border-error{% else %}border-outline-variant{% endif %}">
           <p class="text-label-md text-on-surface-variant">입력확인</p>
           <p class="text-headline-md font-headline-md {% if view.input_required %}text-error{% else %}text-primary{% endif %}">{{ view.input_required|length }}건</p>
@@ -56,7 +61,14 @@
         <span class="material-symbols-outlined text-[18px]">privacy_tip</span>{{ masking_message }}
       </p>
 
-      {% if view.input_required or view.input_advisory %}
+      {% if view.auto_count %}
+      <p class="text-body-md bg-[#EFF6FF] border border-[#BFDBFE] text-[#1E3A8A] rounded-lg p-3">
+        <strong>자동처리</strong>는 프로그램이 장부·목록을 바탕으로 계산하거나 바꿔 적은 곳입니다(연체일수, 대납 연결, 수수료 분리, 쪽 나눔 등).
+        틀릴 수 있으니 파란 표시가 있는 페이지를 한 번씩 확인해 주세요.
+      </p>
+      {% endif %}
+
+      {% if view.input_required or view.input_advisory or view.input_auto %}
       <section class="space-y-3">
         <h3 class="text-headline-md font-headline-md">입력 파일 확인</h3>
         {% if view.input_required %}
@@ -65,6 +77,12 @@
         {% for item in view.input_required %}
         <div class="bg-white border border-error rounded-lg p-3 flex items-start gap-3">
           <span class="bg-error text-on-error px-2 py-0.5 rounded text-label-md whitespace-nowrap shrink-0">입력확인</span>
+          <p class="text-body-md">{{ item }}</p>
+        </div>
+        {% endfor %}
+        {% for item in view.input_auto %}
+        <div class="bg-white border border-[#BFDBFE] rounded-lg p-3 flex items-start gap-3">
+          <span class="bg-[#DBEAFE] text-[#1E40AF] px-2 py-0.5 rounded text-label-md whitespace-nowrap shrink-0">자동처리</span>
           <p class="text-body-md">{{ item }}</p>
         </div>
         {% endfor %}
@@ -82,23 +100,24 @@
           <h3 class="text-headline-md font-headline-md">페이지별 내용</h3>
           <label class="flex items-center gap-2 text-body-md cursor-pointer select-none">
             <input type="checkbox" id="only-review" class="rounded">
-            검수필요 페이지만 보기
+            검수필요·자동처리 페이지만 보기
           </label>
         </div>
 
         {% for biz in view.businesses %}
-        <details class="pv-biz bg-surface-container-lowest border border-outline-variant rounded-xl {% if biz.review_count %}pv-biz-review{% endif %}"
+        <details class="pv-biz bg-surface-container-lowest border border-outline-variant rounded-xl {% if biz.review_count or biz.auto_count %}pv-biz-check{% endif %}"
                  {% if biz.review_count or view.page_count <= 6 %}open{% endif %}>
           <summary class="cursor-pointer list-none p-4 flex justify-between items-center gap-2 flex-wrap">
             <span class="text-headline-md font-headline-md">{{ biz.business_no }}. {{ biz.name or "(사업명 없음)" }}</span>
             <span class="flex gap-2 text-xs">
               <span class="px-2 py-0.5 rounded-full bg-surface-container-high">{{ biz.pages|length }}쪽</span>
               {% if biz.review_count %}<span class="px-2 py-0.5 rounded-full bg-error-container text-on-error-container">검수필요 {{ biz.review_count }}</span>{% endif %}
+              {% if biz.auto_count %}<span class="px-2 py-0.5 rounded-full bg-[#DBEAFE] text-[#1E40AF]">자동처리 {{ biz.auto_count }}</span>{% endif %}
             </span>
           </summary>
           <div class="px-4 pb-4 space-y-5">
             {% for page in biz.pages %}
-            <article class="pv-page border border-outline-variant rounded-lg p-4 space-y-3 bg-white {% if page.needs_review %}pv-needs-review border-error{% endif %}"
+            <article class="pv-page border rounded-lg p-4 space-y-3 bg-white {% if page.needs_review %}pv-needs-review border-error{% elif page.auto %}border-[#93C5FD]{% else %}border-outline-variant{% endif %} {% if page.needs_check %}pv-needs-check{% endif %}"
                      id="p-{{ page.business_no }}-{{ page.index }}">
               <header class="flex justify-between items-start gap-2 flex-wrap">
                 <p class="text-label-md font-label-md">
@@ -109,6 +128,9 @@
 
               {% for r in page.required %}
               <p class="text-body-md text-error flex items-start gap-2"><span class="material-symbols-outlined text-[18px]">priority_high</span>{{ r }}</p>
+              {% endfor %}
+              {% for a in page.auto %}
+              <p class="text-xs text-[#1E40AF] flex items-start gap-2"><span class="shrink-0 px-1.5 rounded bg-[#DBEAFE]">자동처리</span>{{ a }}</p>
               {% endfor %}
               {% for a in page.advisory %}
               <p class="text-xs text-amber-800 flex items-start gap-2"><span class="material-symbols-outlined text-[16px]">info</span>{{ a }}</p>

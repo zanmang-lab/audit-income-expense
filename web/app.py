@@ -444,7 +444,10 @@ async def build(request: Request, preview_id: str) -> HTMLResponse:
 
     s = result.summary
     required_items = [item for item in result.review_items if not item.advisory]
-    advisory_items = [item for item in result.review_items if item.advisory]
+    advisory_items = [item for item in result.review_items if item.advisory and not item.auto]
+    auto_items = [i.format_line() for i in result.input_issues if i.auto] + [
+        item.format_line() for item in result.review_items if item.auto
+    ]
     return templates.TemplateResponse(
         request,
         "result.html",
@@ -466,7 +469,8 @@ async def build(request: Request, preview_id: str) -> HTMLResponse:
             "review_required": [item.format_line() for item in required_items],
             "review_advisory": [item.format_line() for item in advisory_items],
             "input_required": [i.format_line() for i in result.input_issues if not i.advisory],
-            "input_advisory": [i.format_line() for i in result.input_issues if i.advisory],
+            "input_advisory": [i.format_line() for i in result.input_issues if i.advisory and not i.auto],
+            "auto_items": auto_items,
         },
     )
 

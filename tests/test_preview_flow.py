@@ -36,7 +36,8 @@ def test_spacing_only_difference_matches_with_notice():
     assert res.text == ""
     res = build_page_remark(2, _page(_row("김철수", 2000)), overdue, [], sem)
     assert res.text == "김 철수님 우산 1개 대여 후 1일 연체되어 연체료 2,000원 부과"
-    assert res.review_items[0].advisory and "띄어쓰기" in res.review_items[0].reason
+    spacing = [r for r in res.review_items if "띄어쓰기" in r.reason][0]
+    assert spacing.auto
 
 
 def test_unmatched_name_suggests_similar():
@@ -44,8 +45,8 @@ def test_unmatched_name_suggests_similar():
     overdue = [OverdueRecord(None, "우산 1개", "김철쑤", 2000, None), OverdueRecord(None, "우산", "박영희", 2000, None)]
     res = build_page_remark(2, _page(_row("김철수", 2000)), overdue, [], sem)
     assert res.text == ""
-    assert not res.review_items[0].advisory
-    assert "비슷한 이름: 김철쑤" in res.review_items[0].reason
+    failed = [r for r in res.review_items if not r.advisory]
+    assert failed and "비슷한 이름: 김철쑤" in failed[0].reason
     assert "박영희" not in res.review_items[0].reason
 
 
@@ -111,7 +112,7 @@ def test_preview_shows_pages_and_suggestions(client):
     assert "미리보기" in r.text and "이대로 문서 만들기" in r.text
     assert 'name="e-1-1-remark"' in r.text and 'name="e-2-1-class"' in r.text
     assert "비슷한 이름: 김철쑤" in r.text
-    assert "전자 사물함은 대여비 4,000원" in r.text
+    assert "전자사물함은 대여비 4,000원" in r.text
 
 
 def test_edits_are_applied_logged_and_kept(client):

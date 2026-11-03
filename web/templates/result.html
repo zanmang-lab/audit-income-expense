@@ -138,6 +138,19 @@
       </section>
       {% endif %}
 
+      {% if auto_items %}
+      <section class="space-y-3">
+        <h3 class="text-headline-md font-headline-md text-on-surface px-1">자동처리 {{ auto_items|length }}건 — 확인해 주세요</h3>
+        <p class="text-body-md text-on-surface-variant px-1">프로그램이 장부·목록을 바탕으로 계산하거나 바꿔 적은 곳입니다. 검수목록.txt에도 같은 내용이 있습니다.</p>
+        <details class="bg-white border border-[#BFDBFE] rounded-lg p-4" {% if auto_items|length <= 15 %}open{% endif %}>
+          <summary class="cursor-pointer text-body-md text-[#1E40AF]">목록 보기</summary>
+          <ul class="mt-3 space-y-1 text-body-md">
+            {% for item in auto_items %}<li>{{ item }}</li>{% endfor %}
+          </ul>
+        </details>
+      </section>
+      {% endif %}
+
       <section class="space-y-4">
         <h3 class="text-headline-md font-headline-md text-on-surface px-1">상세 검수 항목</h3>
         {% if not review_required and not review_advisory %}

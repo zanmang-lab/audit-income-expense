@@ -25,10 +25,15 @@ class PageView:
     edited: set[str]
     required: list[str] = field(default_factory=list)
     advisory: list[str] = field(default_factory=list)
+    auto: list[str] = field(default_factory=list)
 
     @property
     def needs_review(self) -> bool:
         return bool(self.required)
+
+    @property
+    def needs_check(self) -> bool:
+        return bool(self.required or self.auto)
 
     def name(self, key: str) -> str:
         return f"e-{self.business_no}-{self.index}-{key}"
@@ -44,31 +49,41 @@ class BusinessView:
     def review_count(self) -> int:
         return sum(len(p.required) for p in self.pages)
 
+    @property
+    def auto_count(self) -> int:
+        return sum(len(p.auto) for p in self.pages)
+
 
 @dataclass
 class PreviewView:
     businesses: list[BusinessView]
     input_required: list[str]
     input_advisory: list[str]
+    input_auto: list[str]
     page_count: int
     required_count: int
     advisory_count: int
+    auto_count: int
     edit_count: int
     rows_per_page: int
 
 
 def build_preview_view(prep: PreparedRun) -> PreviewView:
-    by_page: dict[tuple[int, int], tuple[list[str], list[str]]] = {}
+    by_page: dict[tuple[int, int], tuple[list[str], list[str], list[str]]] = {}
     for item in prep.result.review_items:
-        req, adv = by_page.setdefault((item.business_no, item.page_index), ([], []))
-        text = item.reason if item.advisory else (f"{item.target}: {item.reason}" if item.target else item.reason)
-        (adv if item.advisory else req).append(text)
+        req, adv, auto = by_page.setdefault((item.business_no, item.page_index), ([], [], []))
+        if item.auto:
+            auto.append(item.reason)
+        elif item.advisory:
+            adv.append(item.reason)
+        else:
+            req.append(f"{item.target}: {item.reason}" if item.target else item.reason)
 
     businesses: list[BusinessView] = []
     for no, biz in sorted(prep.result.businesses.items()):
         pages: list[PageView] = []
         for idx, page in enumerate(biz.pages, start=1):
-            req, adv = by_page.get((no, idx), ([], []))
+            req, adv, auto = by_page.get((no, idx), ([], [], []))
             values = {FORM_KEYS[f]: prep.current(no, idx, f) for f in EDITABLE_FIELDS}
             originals = {FORM_KEYS[f]: prep.original(no, idx, f) for f in EDITABLE_FIELDS}
             edited = {FORM_KEYS[f] for f in prep.edits.get((no, idx), {})}
@@ -77,17 +92,19 @@ def build_preview_view(prep: PreparedRun) -> PreviewView:
                 income_expense=page.income_expense,
                 rows=list(zip(page.items, page.quantities, page.unit_prices)),
                 total=page.total_amount, values=values, originals=originals, edited=edited,
-                required=req, advisory=adv,
+                required=req, advisory=adv, auto=auto,
             ))
         businesses.append(BusinessView(business_no=no, name=biz.business_name, pages=pages))
 
     return PreviewView(
         businesses=businesses,
         input_required=[i.format_line() for i in prep.input_issues if not i.advisory],
-        input_advisory=[i.format_line() for i in prep.input_issues if i.advisory],
+        input_advisory=[i.format_line() for i in prep.input_issues if i.advisory and not i.auto],
+        input_auto=[i.format_line() for i in prep.input_issues if i.auto],
         page_count=prep.page_count,
         required_count=sum(1 for i in prep.result.review_items if not i.advisory),
-        advisory_count=sum(1 for i in prep.result.review_items if i.advisory),
+        advisory_count=sum(1 for i in prep.result.review_items if i.advisory and not i.auto),
+        auto_count=sum(1 for i in prep.result.review_items if i.auto) + sum(1 for i in prep.input_issues if i.auto),
         edit_count=sum(len(v) for v in prep.edits.values()),
         rows_per_page=prep.layout.rows_per_page,
     )

@@ -27,7 +27,7 @@ from .sheet_reader import (
 )
 
 LOCKER_FIXED_REMARK = (
-    "전자 사물함은 대여비 4,000원, 일반 사물함은 대여비 2,000원"
+    "전자사물함은 대여비 4,000원, 일반사물함은 대여비 2,000원"
 )  # 레거시 기본값; 실제 출력은 SemesterConfig.locker_deposit_remark 사용
 
 
@@ -54,6 +54,7 @@ class RemarkReview:
     target: str
     reason: str
     advisory: bool = False
+    auto: bool = False  # 프로그램이 계산·추론해서 채운 내용 — 사용자 확인용
 
 
 def _compact_name(name: str) -> str:
@@ -354,6 +355,11 @@ def _build_rental_remark_line(
             m_text = ""
         else:
             m_text = str(fee // film_fee_per_sheet)
+            reviews.append(RemarkReview(
+                target=review_target,
+                reason=f"필름 장수 {m_text}장 = 금액 {fee_text}원 ÷ 1장 {film_fee_per_sheet:,}원으로 계산",
+                auto=True,
+            ))
         return R.render("필름값", 장수=m_text, **common), reviews
 
     if note_kind == "손망실비":
@@ -363,6 +369,11 @@ def _build_rental_remark_line(
         days, day_review = _calc_overdue_days(fee, goods_text, rules)
         reasons = [r for r in [day_review, "감면 건 — 연체일수·감면 사유 확인 필요"] if r]
         if days is not None:
+            reviews.append(RemarkReview(
+                target=review_target,
+                reason=f"연체 {days}일 = 연체료 {fee_text}원 ÷ 1일 단가 {_max_daily_rate(goods_text, rules):,}원으로 계산",
+                auto=True,
+            ))
             line = R.render("감면", 일수=days, **common)
         else:
             line = R.render("감면_일수불명", **common)
@@ -370,6 +381,13 @@ def _build_rental_remark_line(
         return line, reviews
 
     days, day_review = _calc_overdue_days(fee, goods_text, rules)
+    if days is not None:
+        rate = _max_daily_rate(goods_text, rules)
+        reviews.append(RemarkReview(
+            target=review_target,
+            reason=f"연체 {days}일 = 연체료 {fee_text}원 ÷ 1일 단가 {rate:,}원(연체료 규정)으로 계산",
+            auto=True,
+        ))
     if days is not None and not day_review:
         line = R.render("연체", 일수=days, **common)
     elif days is not None:
@@ -417,7 +435,7 @@ def _build_rental_remark_for_row(
                 reviews.append(RemarkReview(
                     target=depositor_name,
                     reason=f"띄어쓰기만 다른 이름 — 장부 '{depositor_name}'와 연체료목록 '{direct.name}'을 같은 사람으로 보았습니다",
-                    advisory=True,
+                    auto=True,
                 ))
     if direct:
         line, line_reviews = _build_rental_remark_line(
@@ -439,6 +457,12 @@ def _build_rental_remark_for_row(
         overdue_records, depositor_name, amount, row.date
     )
     if daenap_rec:
+        reviews.append(RemarkReview(
+            target=depositor_name,
+            reason=f"대납으로 연결: 장부 입금자 '{depositor_name}' → 연체료목록 대여자 '{daenap_rec.name}' "
+                   f"(목록 비고 '{daenap_rec.note}')",
+            auto=True,
+        ))
         line, line_reviews = _build_rental_remark_line(
             depositor_name=depositor_name,
             renter_name=daenap_rec.name,
@@ -551,9 +575,16 @@ def _build_locker_refund_remark(
             reviews.append(RemarkReview(
                 target=name,
                 reason=f"띄어쓰기만 다른 이름 — 장부 '{name}'와 환불자목록 '{refund.name}'을 같은 사람으로 보았습니다",
-                advisory=True,
+                auto=True,
             ))
-        entries.append((name, remark_rules.refund_phrase(refund.reason)))
+        phrase = remark_rules.refund_phrase(refund.reason)
+        if phrase.replace(" ", "") != (refund.reason or "").replace(" ", ""):
+            reviews.append(RemarkReview(
+                target=name,
+                reason=f"환불 사유 '{refund.reason}'을 '{phrase}'(으)로 바꿔 적었습니다 (비고 규칙 '환불사유_표현')",
+                auto=True,
+            ))
+        entries.append((name, phrase))
 
     _append_grouped_refund_lines(lines, entries, remark_rules)
     return RemarkResult(text="\n".join(lines), review_items=reviews)

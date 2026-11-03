@@ -42,6 +42,8 @@ class Page:
     income_expense: str
     classification: str
     rows: list[LedgerRow] = field(default_factory=list)
+    # 날짜·수입/지출·구분이 같은데도 새 쪽이 된 이유 ('개요' / '거래처') — 사용자에게 알린다.
+    split_reason: str | None = None
 
     @property
     def key(self) -> tuple[Any, str, str]:
@@ -82,6 +84,9 @@ def _iter_from_rows(
         if issues is not None:
             issues.append(InputIssue("장부", message, row=row_no, advisory=advisory))
 
+    text_dates: list[str] = []
+    text_amounts: list[str] = []
+
     for row_no, row in enumerate(rows[cols.header_row:], start=cols.header_row + 1):
         if is_blank_row(row):
             continue
@@ -96,7 +101,13 @@ def _iter_from_rows(
 
         business_no = parse_int_value(raw_biz)
         if business_no is None:
-            if has_amount and not _looks_like_total_row(row):
+            if not has_amount or _looks_like_total_row(row):
+                continue
+            raw_item = cols.get(row, "item")
+            if (raw_biz is None or str(raw_biz).strip() == "") and (raw_item is None or str(raw_item).strip() in ("", "0")):
+                report(row_no, "사업번호·기재내용이 없는 줄이라 합계 줄로 보고 건너뛰었습니다. 실제 거래면 장부를 확인해 주세요.",
+                       advisory=True)
+            else:
                 report(row_no, f"사업번호를 읽지 못해 제외했습니다 (값: {_show(raw_biz)}).")
             continue
 
@@ -126,6 +137,13 @@ def _iter_from_rows(
             report(row_no, "수입·지출 금액이 모두 0(또는 빈칸)이라 제외했습니다.", advisory=True)
             continue
 
+        if isinstance(raw_date, str):
+            text_dates.append(f"{row_no}행 '{raw_date.strip()}'")
+        for raw in (raw_income, raw_expense):
+            if isinstance(raw, str) and raw.strip():
+                text_amounts.append(f"{row_no}행 '{raw.strip()}'")
+                break
+
         raw_overview = cols.get(row, "overview")
         raw_class = cols.get(row, "classification")
         classification = str(raw_class).strip() if raw_class is not None else ""
@@ -143,6 +161,14 @@ def _iter_from_rows(
             classification=classification,
             classification_needs_review=not classification,
         )
+
+    if issues is not None:
+        for what, found in (("날짜", text_dates), ("금액", text_amounts)):
+            if found:
+                sample = ", ".join(found[:3]) + (f" 외 {len(found) - 3}행" if len(found) > 3 else "")
+                issues.append(InputIssue(
+                    "장부", f"글자로 적힌 {what} {len(found)}개를 {what}로 바꿔 읽었습니다 ({sample}). 값이 맞는지 확인해 주세요.",
+                    advisory=True, auto=True))
 
 
 def iter_ledger_rows(ws: Worksheet, issues: list[InputIssue] | None = None) -> Iterator[LedgerRow]:
@@ -221,27 +247,47 @@ def parse_ledger_workbook(
     return grouped
 
 
-def split_pages(rows: list[LedgerRow], max_rows: int = MAX_ROWS_PER_PAGE) -> list[Page]:
-    """사업번호 내 행을 페이지 키 기준으로 분할. 키가 같아도 max_rows줄(양식 세목 줄 수)이면 새 페이지."""
+def _norm_text(value: Any) -> str:
+    return "".join(str(value or "").split())
+
+
+def split_pages(
+    rows: list[LedgerRow],
+    max_rows: int = MAX_ROWS_PER_PAGE,
+    split_on_item: bool = False,
+) -> list[Page]:
+    """사업번호 내 행을 페이지로 나눈다 (장부 순서 그대로).
+
+    새 쪽이 되는 경우:
+      - 날짜·수입/지출·구분 중 하나가 바뀜 (SPEC 3번)
+      - 개요(내용 칸)가 바뀜 — 한 쪽에는 내용을 하나만 적을 수 있으므로
+      - split_on_item이면 기재내용(거래처)이 바뀜 — 일반 사업은 거래(증빙) 단위로 쪽을 나눈다
+      - 양식 세목 줄 수(max_rows)가 참
+    """
     pages: list[Page] = []
     current: Page | None = None
+    last: LedgerRow | None = None
 
     for row in rows:
         income_expense = "수입" if row.income > 0 else "지출"
         key = (row.date, income_expense, row.classification)
+        reason = None
+        if current is not None and current.key == key and len(current.rows) < max_rows and last is not None:
+            if _norm_text(row.overview) != _norm_text(last.overview):
+                reason = "개요"
+            elif split_on_item and _norm_text(row.item_text) != _norm_text(last.item_text):
+                reason = "거래처"
 
-        if (
-            current is None
-            or current.key != key
-            or len(current.rows) >= max_rows
-        ):
+        if current is None or current.key != key or len(current.rows) >= max_rows or reason:
             current = Page(
                 date=row.date,
                 income_expense=income_expense,
                 classification=row.classification,
+                split_reason=reason,
             )
             pages.append(current)
         current.rows.append(row)
+        last = row
 
     return pages
 

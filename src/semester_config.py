@@ -12,7 +12,7 @@ from .rules_config import DEFAULT_RULESET, ROLE_BY_LABEL, RuleSet, build_rules
 VALID_ROLES = frozenset({"student_fee", "locker", "rental", "general"})
 
 DEFAULT_LOCKER_DEPOSIT_REMARK = (
-    "전자 사물함은 대여비 4,000원, 일반 사물함은 대여비 2,000원"
+    "전자사물함은 대여비 4,000원, 일반사물함은 대여비 2,000원"
 )
 DEFAULT_LOCKER_REFUND_ADVISORY = (
     "환불 단가는 수수료 포함 합본금액. 양식에 맞게 원금/수수료 분리 검토."

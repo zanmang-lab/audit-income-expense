@@ -1,0 +1,153 @@
+"""26-1 최종본 비교로 넣은 규칙과 [자동처리] 알림 테스트."""
+from __future__ import annotations
+
+from datetime import date
+
+from src.config_gen import lookup_per_day, parse_overdue_rules_data
+from src.parse_ledger import LedgerRow, parse_ledger_workbook, split_pages
+from src.pipeline import ReviewItem, format_review_report, run_engine, split_refund_fee
+from src.remarks import OverdueRecord, RefundRecord
+from src.sheet_reader import InputIssue
+from web.semester_inputs import build_semester_from_overview
+
+RULES = parse_overdue_rules_data({
+    "default_per_day": 2000,
+    "categories": [
+        {"per_day": 3000, "keywords": ["돗자리", "폴라로이드"]},
+        {"per_day": 2000, "keywords": ["돗자리(소)"]},
+        {"per_day": 1000, "keywords": ["보조배터리"]},
+    ],
+})
+
+
+def _row(no, detail, name, income=0, expense=0, overview="개요", d=date(2026, 3, 16), cls="x"):
+    return LedgerRow(d, no, detail, name, overview, income, expense, False, cls)
+
+
+def test_more_specific_keyword_wins():
+    assert lookup_per_day("돗자리(소) 1개", RULES) == 2000
+    assert lookup_per_day("돗자리(대) 1개", RULES) == 3000
+    assert lookup_per_day("돗자리 1개", RULES) == 3000
+
+
+# ── 쪽 나누기 ─────────────────────────────────────────────
+
+def test_split_on_vendor_for_general_only():
+    rows = [_row(4, 2, "글터문구센터", expense=45000), _row(4, 3, "시립대학구내서적", expense=500)]
+    pages = split_pages(rows, 13, split_on_item=True)
+    assert [len(p.rows) for p in pages] == [1, 1] and pages[1].split_reason == "거래처"
+    assert [len(p.rows) for p in split_pages(rows, 13, split_on_item=False)] == [2]
+
+
+def test_same_vendor_stays_together():
+    rows = [_row(8, 4, "씨유", expense=2200), _row(8, 5, "씨유", expense=4400)]
+    assert [len(p.rows) for p in split_pages(rows, 13, split_on_item=True)] == [2]
+
+
+def test_split_on_overview_change():
+    rows = [_row(8, 1, "박", expense=1, overview="수박 구매"), _row(8, 2, "박", expense=1, overview="물품 구매")]
+    pages = split_pages(rows, 13)
+    assert [len(p.rows) for p in pages] == [1, 1] and pages[1].split_reason == "개요"
+
+
+def test_locker_pages_not_split_by_name():
+    sem = build_semester_from_overview("1. 사물함 배부 사업\n4. 봄 축제", RULES)
+    rows = {1: [_row(1, i, f"전자{i:02d}사람", income=4000, cls="수익") for i in range(1, 4)],
+            4: [_row(4, 1, "가게A", expense=100), _row(4, 2, "가게B", expense=200)]}
+    res = run_engine(rows, sem, [], [])
+    assert len(res.businesses[1].pages) == 1
+    assert len(res.businesses[4].pages) == 2
+    autos = [r for r in res.review_items if r.auto and r.business_no == 4]
+    assert autos and "거래처" in autos[0].reason and autos[0].format_line().startswith("[자동처리] (사업4/2페이지)")
+
+
+# ── 환불 수수료 분리 ────────────────────────────────────────
+
+REFUND = [RefundRecord("1", "가", 4000, "두번송금"), RefundRecord("2", "나", 2000, "두번송금")]
+
+
+def test_fee_split_when_consistent():
+    rows = [_row(1, 1, "가", expense=4750), _row(1, 2, "나", expense=2750)]
+    s = split_refund_fee(rows, REFUND, 13)
+    assert s.done
+    assert s.items == ["가", "나", "수수료"] and s.quantities == ["1", "1", "2"]
+    assert s.unit_prices == ["4,000", "2,000", "750"]
+
+
+def test_fee_not_split_when_differences_vary():
+    rows = [_row(1, 1, "가", expense=4750), _row(1, 2, "나", expense=2500)]
+    s = split_refund_fee(rows, REFUND, 13)
+    assert not s.done and "일정하지 않아" in s.message
+
+
+def test_fee_not_split_when_unmatched_or_no_room():
+    assert not split_refund_fee([_row(1, 1, "없는사람", expense=4750)], REFUND, 13).done
+    rows = [_row(1, 1, "가", expense=4750), _row(1, 2, "나", expense=2750)]
+    s = split_refund_fee(rows, REFUND, 2)
+    assert not s.done and "칸이 모자라" in s.message
+
+
+def test_fee_split_in_engine_keeps_total_and_notes():
+    sem = build_semester_from_overview("1. 사물함 배부 사업", RULES)
+    rows = {1: [_row(1, 1, "가", expense=4750, overview="사물함 환불", cls="수입의환급"),
+                _row(1, 2, "나", expense=2750, overview="사물함 환불", cls="수입의환급")]}
+    res = run_engine(rows, sem, [], REFUND)
+    page = res.businesses[1].pages[0]
+    assert page.total_amount == "7,500"
+    assert page.items[-1] == "수수료" and page.unit_prices[-1] == "750"
+    assert any(r.auto and "수수료 2 × 750원" in r.reason for r in res.review_items)
+    assert not any("합본금액" in r.reason for r in res.review_items)
+
+
+# ── 그 밖의 알림 ──────────────────────────────────────────
+
+def test_detail_gap_is_flagged():
+    sem = build_semester_from_overview("1. 사물함 배부 사업", RULES)
+    rows = {1: [_row(1, 1, "가", income=4000), _row(1, 3, "나", income=4000)]}
+    res = run_engine(rows, sem, [], [])
+    assert any("세부번호가 이어지지 않습니다(1, 3)" in r.reason and not r.advisory for r in res.review_items)
+
+
+def test_rental_days_and_daenap_are_auto_noted():
+    sem = build_semester_from_overview("3. 물품 대여 사업", RULES)
+    overdue = [OverdueRecord(None, "돗자리(소) 1개", "대여자", 4000, "입금자'으로 입금")]
+    res = run_engine({3: [_row(3, 1, "입금자", income=4000)]}, sem, overdue, [])
+    page = res.businesses[3].pages[0]
+    assert page.remark == "대여자(‘입금자’으로 입금)님 돗자리(소) 1개 대여 후 2일 연체되어 연체료 4,000원 부과"
+    reasons = [r.reason for r in res.review_items if r.auto]
+    assert any("대납으로 연결" in x for x in reasons)
+    assert any("연체 2일 = 연체료 4,000원 ÷ 1일 단가 2,000원" in x for x in reasons)
+
+
+def test_no_review_marker_inside_document_when_days_known():
+    sem = build_semester_from_overview("3. 물품 대여 사업", RULES)
+    overdue = [OverdueRecord(None, "우산 3개", "박", 6000, None)]
+    res = run_engine({3: [_row(3, 1, "박", income=6000)]}, sem, overdue, [])
+    assert res.businesses[3].pages[0].remark == "박님 우산 3개 대여 후 3일 연체되어 연체료 6,000원 부과"
+    assert any("복수 수량" in r.reason and not r.advisory for r in res.review_items)
+
+
+def test_summary_row_without_business_and_item_is_soft_notice():
+    import openpyxl
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(["날짜", "사업번호", "세부번호", "기재내용", "현금", "구분", "개요", "수입", "지출"])
+    ws.append(["2026-03-10", 1, 1, "가", None, "x", "y", 4000, 0])
+    ws.append(["#VALUE!", None, None, None, None, None, None, "10,481,993원", "5,454,540원"])
+    issues: list[InputIssue] = []
+    parse_ledger_workbook(wb, issues=issues)
+    soft = [i for i in issues if "합계 줄" in i.message]
+    assert soft and soft[0].advisory and not [i for i in issues if not i.advisory]
+
+
+def test_report_groups_sections():
+    items = [
+        ReviewItem(1, 1, "가", "매칭 실패"),
+        ReviewItem(1, 1, "", "연체 1일 계산", advisory=True, auto=True),
+        ReviewItem(1, 2, "", "수수료 확인", advisory=True),
+    ]
+    text = format_review_report(items, [InputIssue("장부", "날짜 못 읽음", row=3)])
+    order = [text.index(h) for h in ("■ 입력확인", "■ 검수필요", "■ 자동처리", "■ 참고")]
+    assert order == sorted(order)
+    assert "[자동처리] (사업1/1페이지) 연체 1일 계산" in text

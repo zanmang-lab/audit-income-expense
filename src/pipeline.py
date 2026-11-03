@@ -25,8 +25,14 @@ class ReviewItem:
     target: str
     reason: str
     advisory: bool = False
+    auto: bool = False  # 프로그램이 계산·추론·변환해서 채운 것 — 사용자가 확인해야 함
 
     def format_line(self) -> str:
+        if self.auto:
+            return (
+                f"[자동처리] (사업{self.business_no}/{self.page_index}페이지) "
+                f"{self.reason}"
+            )
         if self.advisory:
             return (
                 f"[검수권장] (사업{self.business_no}/{self.page_index}페이지) "
@@ -89,6 +95,65 @@ def _format_business_no_label(rows: list[LedgerRow]) -> str:
     return f"{business_no}-{first}~{last}"
 
 
+def _detail_gap(rows: list[LedgerRow]) -> str:
+    """세부번호가 숫자이고 중간이 비면 '2, 5'처럼 돌려준다."""
+    try:
+        nums = [int(r.detail_no) for r in rows if r.detail_no is not None]
+    except (TypeError, ValueError):
+        return ""
+    if len(nums) < 2:
+        return ""
+    if sorted(nums) == list(range(min(nums), max(nums) + 1)) and len(set(nums)) == len(nums):
+        return ""
+    return ", ".join(str(n) for n in nums)
+
+
+@dataclass
+class FeeSplit:
+    done: bool
+    message: str = ""
+    items: list[str] = field(default_factory=list)
+    quantities: list[str] = field(default_factory=list)
+    unit_prices: list[str] = field(default_factory=list)
+
+
+FEE_ITEM_NAME = "수수료"
+
+
+def split_refund_fee(rows: list[LedgerRow], refund_records: list[RefundRecord], max_rows: int) -> FeeSplit:
+    """환불 페이지의 '원금+수수료' 금액을 원금 줄과 '수수료 n × 금액' 줄로 나눈다.
+
+    검산이 될 때만 나눈다: 모든 행이 환불자 목록과 연결되고, (장부 금액 − 목록 환불금액)이
+    모든 행에서 같은 양수여야 한다. 하나라도 아니면 나누지 않고 이유를 알린다.
+    """
+    from .remarks import _find_refund_by_name
+
+    principals: list[int] = []
+    diffs: list[int] = []
+    for row in rows:
+        rec, _ = _find_refund_by_name(refund_records, row.item_text.strip())
+        if rec is None or rec.amount is None:
+            return FeeSplit(False)  # 매칭 실패는 비고 쪽 검수필요로 이미 알림
+        principals.append(int(rec.amount))
+        diffs.append(int(row.expense) - int(rec.amount))
+    if not rows or all(d == 0 for d in diffs):
+        return FeeSplit(False)
+    if len(set(diffs)) != 1 or diffs[0] <= 0 or any(p <= 0 for p in principals):
+        detail = ", ".join(f"{r.item_text.strip()} {int(r.expense):,}−{p:,}" for r, p in zip(rows, principals))
+        return FeeSplit(False, f"장부 금액과 환불자 목록 금액의 차이가 일정하지 않아 수수료를 나누지 않았습니다({detail}). 직접 확인해 주세요.")
+    if len(rows) + 1 > max_rows:
+        return FeeSplit(False, "세목 칸이 모자라 수수료 줄을 따로 넣지 못했습니다. 장부 금액(원금+수수료) 그대로 두었습니다.")
+    fee, n = diffs[0], len(rows)
+    return FeeSplit(
+        True,
+        f"장부 금액 {int(rows[0].expense):,}원 등을 환불자 목록 금액(원금)과 '{FEE_ITEM_NAME} {n} × {fee:,}원'으로 나눴습니다. "
+        f"총액은 그대로입니다. 실제 이체 수수료와 맞는지 확인해 주세요.",
+        items=[r.item_text for r in rows] + [FEE_ITEM_NAME],
+        quantities=["1"] * n + [str(n)],
+        unit_prices=[format_amount(p) for p in principals] + [format_amount(fee)],
+    )
+
+
 def _page_content(rows: list[LedgerRow]) -> str:
     for row in rows:
         if row.overview:
@@ -104,9 +169,27 @@ def _fill_page(
     overdue_records: list[OverdueRecord],
     refund_records: list[RefundRecord],
     semester: SemesterConfig,
+    max_rows: int = MAX_ROWS_PER_PAGE,
 ) -> tuple[FilledPage, list[ReviewItem]]:
     reviews: list[ReviewItem] = []
     rows = page.rows
+
+    def note(reason: str, *, auto: bool = False, advisory: bool = False, target: str = "") -> None:
+        reviews.append(ReviewItem(
+            business_no=business_no, page_index=page_index, target=target or _page_target(rows),
+            reason=reason, advisory=advisory or auto, auto=auto,
+        ))
+
+    if page.split_reason:
+        what = "개요(내용)" if page.split_reason == "개요" else "기재내용(거래처)"
+        note(f"앞 쪽과 날짜·구분은 같지만 {what}가 달라 새 쪽으로 나눴습니다. 한 쪽으로 합쳐야 하면 직접 합쳐 주세요.", auto=True)
+
+    gap = _detail_gap(rows)
+    if gap:
+        note(f"세부번호가 이어지지 않습니다({gap}) — 사업번호 표기 '{_format_business_no_label(rows)}'가 맞는지 확인해 주세요.")
+
+    if not _page_content(rows):
+        note("장부 개요가 비어 있어 내용 칸을 비웠습니다.")
 
     classification = page.classification
     if not classification:
@@ -156,7 +239,8 @@ def _fill_page(
                 page_index=page_index,
                 target=item.target or _page_target(rows),
                 reason=item.reason,
-                advisory=item.advisory,
+                advisory=item.advisory or item.auto,
+                auto=item.auto,
             )
         )
 
@@ -164,17 +248,15 @@ def _fill_page(
         semester.role_for(business_no) == "locker"
         and page.income_expense == "지출"
         and semester.rules.is_refund_page(_page_content(rows))
-        and semester.rules.refund_fee_advisory
     ):
-        reviews.append(
-            ReviewItem(
-                business_no=business_no,
-                page_index=page_index,
-                target="",
-                reason=semester.rules.refund_fee_advisory,
-                advisory=True,
-            )
-        )
+        split = split_refund_fee(rows, refund_records, max_rows)
+        if split.done:
+            items, quantities, unit_prices = split.items, split.quantities, split.unit_prices
+            note(split.message, auto=True)
+        elif split.message:
+            note(split.message, advisory=True)
+        elif semester.rules.refund_fee_advisory:
+            note(semester.rules.refund_fee_advisory, advisory=True)
 
     filled = FilledPage(
         business_no_label=_format_business_no_label(rows),
@@ -215,7 +297,8 @@ def run_engine(
 
     for business_no in sorted(ledger_by_business):
         rows = ledger_by_business[business_no]
-        pages = split_pages(rows, max_rows_per_page)
+        role = semester.role_for(business_no)
+        pages = split_pages(rows, max_rows_per_page, split_on_item=role not in ("locker", "rental"))
         business_name = business_name_map.get(str(business_no), "")
         output = BusinessOutput(business_no=business_no, business_name=business_name)
 
@@ -228,6 +311,7 @@ def run_engine(
                 overdue_records,
                 refund_records,
                 semester,
+                max_rows_per_page,
             )
             output.pages.append(filled)
             all_reviews.extend(reviews)
@@ -263,15 +347,35 @@ def result_to_preview_dict(result: EngineResult) -> dict[str, Any]:
     return preview
 
 
+REPORT_NOTE = (
+    "※ 세목은 장부 기재내용, 수량은 1, 단가는 장부 금액으로 넣은 초안입니다. "
+    "영수증 품목·수량으로 적어야 하는 쪽과 증빙서류 칸은 직접 작성해 주세요."
+)
+
+
 def format_review_report(
     review_items: list[ReviewItem],
     input_issues: Sequence[InputIssue] = (),
 ) -> str:
-    """검수목록.txt — 입력 파일에서 제외·확인할 항목을 먼저, 그다음 페이지별 검수 항목."""
-    lines = [i.format_line() for i in input_issues if not i.advisory]
-    lines += [i.format_line() for i in input_issues if i.advisory]
-    lines += [item.format_line() for item in review_items]
-    return "\n".join(lines) + ("\n" if lines else "")
+    """검수목록.txt — 종류별로 묶는다.
+
+    1) 입력확인: 엑셀에서 빠진 행 2) 검수필요: 빈칸·매칭 실패 등
+    3) 자동처리: 프로그램이 계산·변환·추론한 곳(확인 필요) 4) 참고: 검수권장
+    """
+    sections = [
+        ("■ 입력확인 — 엑셀에서 읽지 못해 문서에서 빠진 행", [i.format_line() for i in input_issues if not i.advisory]),
+        ("■ 검수필요 — 비어 있거나 확정하지 못한 칸", [r.format_line() for r in review_items if not r.advisory]),
+        ("■ 자동처리 — 프로그램이 계산하거나 바꿔 적은 곳 (맞는지 확인해 주세요)",
+         [i.format_line() for i in input_issues if i.auto] + [r.format_line() for r in review_items if r.auto]),
+        ("■ 참고 — 검수권장",
+         [i.format_line() for i in input_issues if i.advisory and not i.auto]
+         + [r.format_line() for r in review_items if r.advisory and not r.auto]),
+    ]
+    lines = [REPORT_NOTE, ""]
+    for title, items in sections:
+        if items:
+            lines += [f"{title} ({len(items)}건)", *items, ""]
+    return "\n".join(lines).rstrip() + "\n"
 
 
 def filled_page_to_hwpx_dict(page: FilledPage) -> dict[str, Any]:

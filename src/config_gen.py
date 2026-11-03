@@ -19,15 +19,25 @@ class OverdueRulesConfig:
 
 
 def lookup_per_day(base_name: str, rules: OverdueRulesConfig) -> int:
-    """물품명에 대해 keywords 부분일치 → per_day, 없으면 default."""
+    """물품명에 대해 keywords 부분일치 → per_day, 없으면 default.
+
+    여러 키워드가 맞으면 **더 구체적인(긴) 키워드**를 쓴다.
+    예: '돗자리(소) 1개'는 '돗자리'(3,000원)가 아니라 '돗자리(소)'(2,000원).
+    괄호를 뺀 키워드('돗자리(대)'→'돗자리')로 맞은 경우는 괄호까지 맞은 경우보다 뒤로 둔다.
+    """
+    best: tuple[int, int] | None = None  # (점수, 단가)
     for category in rules.categories:
         for keyword in category.keywords:
-            if keyword in base_name:
-                return category.per_day
-            bare = re.sub(r"\([^)]*\)", "", keyword).strip()
-            if bare and bare in base_name:
-                return category.per_day
-    return rules.default_per_day
+            score = None
+            if keyword and keyword in base_name:
+                score = len(keyword) * 2 + 1
+            else:
+                bare = re.sub(r"\([^)]*\)", "", keyword).strip()
+                if bare and bare in base_name:
+                    score = len(bare) * 2
+            if score is not None and (best is None or score > best[0]):
+                best = (score, category.per_day)
+    return best[1] if best else rules.default_per_day
 
 
 def parse_overdue_rules_data(data: dict) -> OverdueRulesConfig:

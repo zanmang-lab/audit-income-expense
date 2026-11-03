@@ -30,10 +30,11 @@ class InputIssue:
     message: str
     row: int | None = None  # 엑셀 행 번호(1부터)
     advisory: bool = False
+    auto: bool = False  # 프로그램이 바꿔 읽은 것(글자 날짜 → 날짜 등)
 
     def format_line(self) -> str:
         where = f"{self.source} {self.row}행" if self.row else self.source
-        tag = "[입력확인-권장]" if self.advisory else "[입력확인]"
+        tag = "[자동처리]" if self.auto else ("[입력확인-권장]" if self.advisory else "[입력확인]")
         return f"{tag} {where}: {self.message}"
 
 
