@@ -164,6 +164,17 @@ def prepare_run(
 
     ledger_by_business = run_stage("장부 읽기", _load_ledger)
 
+    for no in sorted(ledger_by_business):
+        if not semester.name_for(no):
+            input_issues.append(InputIssue(
+                "사업개요", f"장부에 사업번호 {no}번이 있는데 사업개요에 없어 사업명이 비었습니다. "
+                           f"사업개요에 '{no}. 사업명' 줄을 추가해 주세요."))
+    unused = sorted(set(semester.businesses) - set(ledger_by_business))
+    if unused:
+        input_issues.append(InputIssue(
+            "사업개요", f"사업개요의 {', '.join(f'{n}번' for n in unused)}은(는) 장부에 거래가 없어 문서를 만들지 않았습니다.",
+            advisory=True))
+
     result = run_stage(
         "수입지출내역서 데이터 생성",
         lambda: run_engine(

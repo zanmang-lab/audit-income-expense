@@ -12,7 +12,7 @@ from io import BytesIO
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -35,8 +35,15 @@ from web.form_examples import upload_form_examples_html
 from web.sample_files import ensure_example_files, resolve_example_path
 from src.rules_config import TEMPLATE_FIELDS, RulesError
 from src.semester_config import DEFAULT_FILM_FEE_PER_SHEET, DEFAULT_LOCKER_DEPOSIT_REMARK
-from web.settings_file import build_settings, default_rules_text, parse_rules_text, settings_to_json
+from web.settings_file import (
+    build_settings,
+    default_rules_text,
+    example_settings,
+    parse_rules_text,
+    settings_to_json,
+)
 from web.semester_inputs import (
+    EXAMPLE_AUTHOR,
     BasicInfo,
     UploadConfig,
     build_semester_from_overview,
@@ -244,6 +251,7 @@ async def index(request: Request) -> HTMLResponse:
             "default_locker_remark": DEFAULT_LOCKER_DEPOSIT_REMARK,
             "default_film_fee": DEFAULT_FILM_FEE_PER_SHEET,
             "default_rules_json": default_rules_text(),
+            "example_author": EXAMPLE_AUTHOR,
             "template_fields": TEMPLATE_FIELDS,
         },
     )
@@ -473,6 +481,12 @@ async def build(request: Request, preview_id: str) -> HTMLResponse:
             "auto_items": auto_items,
         },
     )
+
+
+@app.get("/settings/example")
+async def settings_example() -> JSONResponse:
+    """26-1 통합본 형식의 예시 설정 — 첫 화면 '26-1 예시로 채우기'에서 쓴다."""
+    return JSONResponse(example_settings())
 
 
 @app.get("/examples/{filename}")

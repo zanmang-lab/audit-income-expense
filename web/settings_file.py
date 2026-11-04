@@ -86,3 +86,19 @@ def build_settings(
 
 def settings_to_json(settings: dict[str, Any]) -> str:
     return json.dumps(settings, ensure_ascii=False, indent=2) + "\n"
+
+
+def example_settings() -> dict[str, Any]:
+    """26-1 통합본 형식의 예시 설정 (개인정보 없음)."""
+    from src.semester_config import DEFAULT_FILM_FEE_PER_SHEET, DEFAULT_LOCKER_DEPOSIT_REMARK
+    from web.semester_inputs import EXAMPLE_AUTHOR, EXAMPLE_OVERDUE_RULES, EXAMPLE_OVERVIEW, EXAMPLE_SEMESTER
+
+    return build_settings(
+        semester_label=EXAMPLE_SEMESTER,
+        author=dict(EXAMPLE_AUTHOR),
+        locker_deposit_remark=DEFAULT_LOCKER_DEPOSIT_REMARK,
+        film_fee_per_sheet=DEFAULT_FILM_FEE_PER_SHEET,
+        business_overview=EXAMPLE_OVERVIEW,
+        overdue_rules_text=EXAMPLE_OVERDUE_RULES,
+        rules=build_rules(),
+    )

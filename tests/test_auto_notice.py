@@ -167,3 +167,54 @@ def test_classification_spacing_is_removed_and_noted():
     assert len(split_pages(grouped[1])) == 1
     note = [i for i in issues if i.auto and "구분의 띄어쓰기" in i.message]
     assert note and "'지출의 환급'→'지출의환급' 1행" in note[0].message
+
+
+def test_example_settings_follow_26_1_format():
+    from web.settings_file import example_settings, parse_rules_text
+
+    s = example_settings()
+    assert s["기본정보"]["학기명"] == "26-1"
+    assert s["기본정보"]["작성자"] == {"성명": "", "직위": "학생복지위원장", "소속": "학생복지위원회"}
+    assert "1. 1학기 온라인 사물함 배부 사업" in s["사업개요"] and "99. 기타" in s["사업개요"]
+    assert "1DAY ₩2,000: 돗자리(소)" in s["연체료규정"]
+    assert parse_rules_text("") .templates == parse_rules_text(__import__("json").dumps(s["비고규칙"])).templates
+
+
+def test_ledger_business_missing_from_overview_is_reported(tmp_path):
+    import io
+
+    import openpyxl
+
+    from hwpx_builder import build_hwpx, standard_cells
+    from web.runner import prepare_run
+    from web.semester_inputs import UploadConfig
+
+    def xlsx(rows):
+        buf = io.BytesIO(); wb = openpyxl.Workbook()
+        for r in rows: wb.active.append(r)
+        wb.save(buf); buf.seek(0); return buf
+
+    tpl = tmp_path / "t.hwpx"; tpl.write_bytes(build_hwpx(standard_cells()))
+    sem = build_semester_from_overview("1. 사물함 배부 사업\n5. 간식행사", RULES)
+    prep = prepare_run(
+        xlsx([["날짜", "사업번호", "기재내용", "구분", "개요", "수입", "지출"],
+              ["2026-03-10", 1, "가", "x", "y", 4000, 0], ["2026-03-11", 7, "나", "x", "z", 0, 100]]),
+        xlsx([["대여물품", "성명", "연체료"]]), xlsx([["이름", "사유"]]).getvalue(),
+        upload=UploadConfig(semester=sem, business_overview="", overdue_rules_text="", template_hwpx_path=tpl),
+        work_dir=tmp_path / "w",
+    )
+    lines = [i.format_line() for i in prep.input_issues]
+    assert any("[입력확인] 사업개요: 장부에 사업번호 7번이 있는데 사업개요에 없어" in l for l in lines)
+    assert any("5번" in l and "장부에 거래가 없어" in l for l in lines)
+
+
+def test_first_page_has_26_1_defaults():
+    from fastapi.testclient import TestClient
+
+    from web.app import app
+
+    html = TestClient(app).get("/").text
+    assert 'value="학생복지위원회"' in html and 'value="학생복지위원장"' in html
+    assert "1. 1학기 온라인 사물함 배부 사업" in html
+    assert 'id="sem-year"' in html and 'name="semester_label"' in html
+    assert "관리자용" in html

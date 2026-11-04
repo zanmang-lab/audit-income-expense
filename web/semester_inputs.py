@@ -25,13 +25,33 @@ TEMPLATE_EXTENSIONS = {".hwp", ".hwpx"}
 _LINE_MAPPING = re.compile(r"^\s*(\d+)\s*[:\.\|]\s*(.+?)\s*$")
 
 
+# 26-1 학복위 통합본 기준 예시 — 처음 쓰는 사람이 형식을 따라 적을 수 있게 미리 채운다.
+EXAMPLE_SEMESTER = "26-1"
+EXAMPLE_AUTHOR = {"소속": "학생복지위원회", "직위": "학생복지위원장"}
+EXAMPLE_OVERVIEW = """0. 총학생회비 배분
+1. 1학기 온라인 사물함 배부 사업
+2. 1학기 대면 사물함 배부 사업
+3. 1학기 물품 대여 사업
+4. 봄 축제
+5. 중간고사 간식행사
+6. 시험기간 인스타 스토리 인증 이벤트
+7. 대동제
+8. 과일 화채 행사
+9. 중앙도서관 사물함 관리 운영
+10. 기말고사 간식행사
+98. 관리운영비
+99. 기타"""
+EXAMPLE_OVERDUE_RULES = (
+    "1DAY ₩1,000: 보조배터리\n"
+    "1DAY ₩2,000: 그 외 물품\n"
+    "1DAY ₩2,000: 돗자리(소)\n"
+    "1DAY ₩3,000: 폴라로이드, 앰프, 듀라테이블, 의자, 카트, 피크닉, 돗자리, 캐노피, 빔프로젝터"
+)
+
+
 def default_overdue_rules_placeholder() -> str:
-    """폼 기본값 — 연체료 규정 입력 예시."""
-    return (
-        "1DAY ₩1,000: 보조배터리\n"
-        "1DAY ₩2,000: 그 외 물품\n"
-        "1DAY ₩3,000: 폴라로이드, 앰프, 듀라테이블, 의자, 카트, 피크닉용품, 캐노피, 빔프로젝터"
-    )
+    """폼 기본값 — 26-1 연체료 규정."""
+    return EXAMPLE_OVERDUE_RULES
 
 
 @dataclass
@@ -45,12 +65,8 @@ class UploadConfig:
 
 
 def default_business_overview_placeholder() -> str:
-    """폼 기본값 — 업로드 양식 안내용 예시 (서버 설정과 무관)."""
-    return (
-        "0. 총학생회비\n"
-        "1. 사물함 배부 사업\n"
-        "2. 물품 대여 사업"
-    )
+    """폼 기본값 — 26-1 통합본 사업 목록."""
+    return EXAMPLE_OVERVIEW
 
 
 def resolve_template(
