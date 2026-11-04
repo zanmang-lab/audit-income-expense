@@ -26,14 +26,16 @@ def lookup_per_day(base_name: str, rules: OverdueRulesConfig) -> int:
     괄호를 뺀 키워드('돗자리(대)'→'돗자리')로 맞은 경우는 괄호까지 맞은 경우보다 뒤로 둔다.
     """
     best: tuple[int, int] | None = None  # (점수, 단가)
+    name = "".join(str(base_name).split())  # 띄어쓰기 무시: '피크닉 테이블' = '피크닉테이블'
     for category in rules.categories:
-        for keyword in category.keywords:
+        for raw_keyword in category.keywords:
+            keyword = "".join(raw_keyword.split())
             score = None
-            if keyword and keyword in base_name:
+            if keyword and keyword in name:
                 score = len(keyword) * 2 + 1
             else:
                 bare = re.sub(r"\([^)]*\)", "", keyword).strip()
-                if bare and bare in base_name:
+                if bare and bare in name:
                     score = len(bare) * 2
             if score is not None and (best is None or score > best[0]):
                 best = (score, category.per_day)

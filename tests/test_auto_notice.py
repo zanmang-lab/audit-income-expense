@@ -176,7 +176,11 @@ def test_example_settings_follow_26_1_format():
     assert s["기본정보"]["학기명"] == "26-1"
     assert s["기본정보"]["작성자"] == {"성명": "", "직위": "학생복지위원장", "소속": "학생복지위원회"}
     assert "1. 1학기 온라인 사물함 배부 사업" in s["사업개요"] and "99. 기타" in s["사업개요"]
-    assert "1DAY ₩2,000: 돗자리(소)" in s["연체료규정"]
+    assert s["연체료규정"].splitlines() == [
+        "1DAY ₩1,000: 보조배터리",
+        "1DAY ₩3,000: 폴라로이드, 앰프, 듀라테이블, 의자, 카트, 삼각대, 돗자리, 피크닉 테이블, 보드게임, 캐노피, 빔프로젝터",
+        "1DAY ₩2,000: 그 외 물품",
+    ]
     assert parse_rules_text("") .templates == parse_rules_text(__import__("json").dumps(s["비고규칙"])).templates
 
 
@@ -218,3 +222,15 @@ def test_first_page_has_26_1_defaults():
     assert "1. 1학기 온라인 사물함 배부 사업" in html
     assert 'id="sem-year"' in html and 'name="semester_label"' in html
     assert "관리자용" in html
+
+
+def test_keyword_matching_ignores_spacing():
+    from web.semester_inputs import EXAMPLE_OVERDUE_RULES
+    from src.parse_overdue_rules_image import parse_overdue_rules_text
+
+    rules = parse_overdue_rules_text(EXAMPLE_OVERDUE_RULES)
+    assert lookup_per_day("피크닉 테이블 1개", rules) == 3000
+    assert lookup_per_day("피크닉테이블 1개", rules) == 3000
+    assert lookup_per_day("보조배터리 1개", rules) == 1000
+    assert lookup_per_day("삼각대 1개", rules) == 3000
+    assert lookup_per_day("우산 1개", rules) == 2000
