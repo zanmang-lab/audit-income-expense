@@ -89,7 +89,7 @@ def settings_to_json(settings: dict[str, Any]) -> str:
 
 
 def example_settings() -> dict[str, Any]:
-    """26-1 통합본 형식의 예시 설정 (개인정보 없음)."""
+    """기본값 설정 (개인정보 없음, 학기는 비움)."""
     from src.semester_config import DEFAULT_FILM_FEE_PER_SHEET, DEFAULT_LOCKER_DEPOSIT_REMARK
     from web.semester_inputs import EXAMPLE_AUTHOR, EXAMPLE_OVERDUE_RULES, EXAMPLE_OVERVIEW, EXAMPLE_SEMESTER
 

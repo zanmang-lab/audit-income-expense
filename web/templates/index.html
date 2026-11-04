@@ -23,12 +23,12 @@
       <h2 class="text-display font-display text-on-surface mb-2">수입지출내역서 자동 작성</h2>
       <p class="text-body-lg font-body-lg text-on-surface-variant">
         장부·연체료 목록·환불자 목록과 양식을 올리면 사업별 수입지출내역서 <strong>초안</strong>을 만듭니다.
-        입력 형식은 26-1 학복위 수입지출내역서 통합본을 따릅니다.
+        입력칸에는 기본값이 미리 들어 있습니다.
       </p>
     </section>
 
     <section class="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 mb-8">
-      <p class="text-label-md font-label-md text-on-surface mb-2">이 순서대로 하세요 <span class="where">(26-1 통합본 값이 미리 들어 있습니다)</span></p>
+      <p class="text-label-md font-label-md text-on-surface mb-2">이 순서대로 하세요 <span class="where">(기본값이 미리 들어 있습니다)</span></p>
       <ol class="list-decimal list-inside text-body-md text-on-surface-variant space-y-1">
         <li><strong>① 학기</strong>를 고르고 책임자 성명·연락처 입력</li>
         <li><strong>② 사업개요</strong>와 <strong>③ 연체료 규정</strong>에서 이번 학기에 바뀐 것만 고치기</li>
@@ -47,7 +47,7 @@
           <span class="where">— 지난 학기에 고친 사업개요·연체료 규정·문구가 그대로 채워집니다. (선택)</span>
         </div>
         <div class="mt-1 flex flex-wrap gap-x-4 where">
-          <button type="button" id="example-btn" class="underline">처음 값(26-1)으로 되돌리기</button>
+          <button type="button" id="example-btn" class="underline">기본값으로 되돌리기</button>
           <button type="button" id="settings-save-btn" class="underline">현재 입력을 설정 파일로 따로 저장</button>
           <span>설정 파일은 결과 zip에 자동으로 들어갑니다.</span>
         </div>
@@ -62,20 +62,21 @@
         <div class="mt-4">
           <p class="text-label-md font-label-md">학기 <span class="chip chip-req">필수</span></p>
           <div class="mt-1 flex gap-2 items-center flex-wrap">
-            <select id="sem-year" class="field" style="width:auto"></select>
+            <select id="sem-year" class="field" style="width:auto"><option value="">연도 선택</option></select>
             <span>년</span>
             <select id="sem-term" class="field" style="width:auto">
+              <option value="">학기 선택</option>
               <option value="1">1학기</option>
               <option value="2">2학기</option>
             </select>
             <input type="hidden" name="semester_label" id="semester_label" data-remember>
           </div>
-          <p class="where mt-1">통합본 표기 <b id="sem-preview">26-1</b> · 결과 파일 이름 <code id="file-preview">26-1_수입지출내역서_1_사업명.hwpx</code></p>
+          <p class="where mt-1">표기 <b id="sem-preview">(학기를 고르세요)</b> · 결과 파일 이름 <code id="file-preview">학기_수입지출내역서_1_사업명.hwpx</code></p>
         </div>
 
         <div class="mt-5">
           <p class="text-label-md font-label-md">책임자 <span class="chip chip-opt">선택</span></p>
-          <p class="where mt-1">모든 쪽의 <b>책임자</b> 칸(소속·직위·성명·연락처)에 똑같이 들어갑니다. 26-1 통합본은 위원장 정보를 적었습니다. 비워 둔 칸은 양식에 적힌 그대로 둡니다.</p>
+          <p class="where mt-1">모든 쪽의 <b>책임자</b> 칸(소속·직위·성명·연락처)에 똑같이 들어갑니다. 기본값은 위원장 정보입니다. 비워 둔 칸은 양식에 적힌 그대로 둡니다.</p>
           <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
             <label class="block"><span class="text-xs">소속</span>
               <input name="author_affiliation" data-remember class="field mt-1" value="{{ example_author['소속'] }}" placeholder="예: 학생복지위원회"></label>
@@ -99,7 +100,7 @@
           <b>어디를 보고</b>: 사업계획서(예산안)의 사업 목록 · <b>번호</b>: 장부 B열 <b>사업번호</b>와 같은 번호 ·
           <b>형식</b>: 한 줄에 <code>번호. 사업명</code> — 사업명이 문서의 사업명 칸에 그대로 들어갑니다.
         </p>
-        <p class="where mt-1">26-1 통합본 예: <code>1. 1학기 온라인 사물함 배부 사업</code> · <code>4. 봄 축제</code> · <code>98. 관리운영비</code> · <code>99. 기타</code></p>
+        <p class="where mt-1">예: <code>1. 1학기 온라인 사물함 배부 사업</code> · <code>4. 봄 축제</code> · <code>98. 관리운영비</code> · <code>99. 기타</code></p>
         <textarea id="business_overview" name="business_overview" required rows="13"
           class="field mt-3 leading-relaxed">{{ default_overview }}</textarea>
         <div id="term-warning" class="hidden mt-2 p-3 rounded-lg bg-[#FFFBEB] border border-[#FCD34D] text-body-md text-[#92400E]">
@@ -154,7 +155,7 @@
       <!-- ⑤ 장부 -->
       <div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl">
         <label for="ledger" class="text-headline-md font-headline-md text-on-surface block mb-2">⑤ 장부 (.xlsx) <span class="chip chip-req">필수</span></label>
-        <p class="where mb-3"><b>무엇을</b>: 학복위 엑셀 장부(예: 26-1 학복위 엑셀장부 공유용). 장부의 <b>개요(G열)가 문서의 내용 칸</b>이 되니 통합본에 쓸 문구로 적어 두면 고칠 일이 줄어듭니다.</p>
+        <p class="where mb-3"><b>무엇을</b>: 학복위 엑셀 장부(예: 학복위 엑셀장부 공유용). 장부의 <b>개요(G열)가 문서의 내용 칸</b>이 되니 통합본에 쓸 문구로 적어 두면 고칠 일이 줄어듭니다.</p>
         {{ file_zone_compact("ledger", "ledger", ".xlsx", "table_view", "엑셀 파일을 선택하세요") }}
         {{ examples.ledger | safe }}
       </div>
@@ -182,14 +183,14 @@
           <span class="text-headline-md font-headline-md text-on-surface">기타 문구 <span class="chip chip-opt">바뀐 경우에만</span></span>
           <span class="material-symbols-outlined text-on-surface-variant transition-transform group-open:rotate-180">expand_more</span>
         </summary>
-        <p class="where mt-2">26-1 통합본 값이 들어 있습니다. 대여비나 필름 가격이 바뀐 학기에만 고치세요.</p>
+        <p class="where mt-2">기본값이 들어 있습니다. 대여비나 필름 가격이 바뀐 학기에만 고치세요.</p>
         <label class="block mt-4"><span class="text-label-md">사물함 비고 첫 줄</span>
           <textarea name="locker_deposit_remark" data-remember rows="2" class="field mt-1">{{ default_locker_remark }}</textarea>
-          <span class="where">사물함 사업 입금·환불 쪽 비고 첫 줄. 26-1: <code>전자사물함은 대여비 4,000원, 일반사물함은 대여비 2,000원</code></span>
+          <span class="where">사물함 사업 입금·환불 쪽 비고 첫 줄. 기본값: <code>전자사물함은 대여비 4,000원, 일반사물함은 대여비 2,000원</code></span>
         </label>
         <label class="block mt-4"><span class="text-label-md">폴라로이드 필름 1장 가격(원)</span>
           <input name="film_fee_per_sheet" data-remember inputmode="numeric" value="{{ default_film_fee }}" class="field mt-1" style="max-width:200px">
-          <span class="where block">필름값 금액 ÷ 이 가격 = 필름 장수. 26-1: 1,000</span>
+          <span class="where block">필름값 금액 ÷ 이 가격 = 필름 장수. 기본값: 1,000</span>
         </label>
       </details>
 
@@ -200,7 +201,7 @@
           <span class="material-symbols-outlined text-on-surface-variant transition-transform group-open:rotate-180">expand_more</span>
         </summary>
         <p class="where mt-2">
-          비고 문장의 말투(26-1 통합본 문장), 환불 사유 표현 등입니다. 평소에는 열지 않아도 됩니다.
+          비고 문장의 말투, 환불 사유 표현 등입니다. 평소에는 열지 않아도 됩니다.
           문장을 바꿔야 할 때만 고치고, 문장 틀의 <code>{중괄호}</code> 칸은 그대로 두세요.
         </p>
         <textarea id="rules_json" name="rules_json" data-remember spellcheck="false"
@@ -268,13 +269,12 @@
     const byName = (n) => document.querySelector(`[name="${n}"]`);
     const DEFAULT_RULES_TEXT = {{ default_rules_json | tojson }};
 
-    // ── ① 학기: 26-1 통합본처럼 'YY-N' ──
+    // ── ① 학기: 'YY-N' (예: 26-2). 기본으로 비워 두고 사용자가 고른다 ──
     const yearSel = document.getElementById('sem-year');
     const termSel = document.getElementById('sem-term');
     const semInput = document.getElementById('semester_label');
     const now = new Date();
     const thisYY = now.getFullYear() % 100;
-    const thisTerm = now.getMonth() + 1 >= 8 ? '2' : '1';
     for (let y = thisYY - 2; y <= thisYY + 2; y++) {
       const o = document.createElement('option');
       o.value = String(y).padStart(2, '0'); o.textContent = '20' + o.value;
@@ -292,14 +292,13 @@
       return true;
     }
     function updateSemester() {
-      const label = `${yearSel.value}-${termSel.value}`;
+      const ok = yearSel.value && termSel.value;
+      const label = ok ? `${yearSel.value}-${termSel.value}` : '';
       semInput.value = label;
-      document.getElementById('sem-preview').textContent = label;
-      document.getElementById('file-preview').textContent = `${label}_수입지출내역서_1_사업명.hwpx`;
+      document.getElementById('sem-preview').textContent = ok ? label : '(학기를 고르세요)';
+      document.getElementById('file-preview').textContent = `${ok ? label : '학기'}_수입지출내역서_1_사업명.hwpx`;
       checkTerm();
     }
-    yearSel.value = String(thisYY).padStart(2, '0');
-    termSel.value = thisTerm;
     yearSel.addEventListener('change', updateSemester);
     termSel.addEventListener('change', updateSemester);
 
@@ -309,7 +308,7 @@
       const box = document.getElementById('term-warning');
       if (!box || !overview) return;
       const term = termSel.value, other = term === '1' ? '2' : '1';
-      if (overview.value.includes(`${other}학기`)) {
+      if (term && overview.value.includes(`${other}학기`)) {
         document.getElementById('term-warning-text').textContent =
           `사업개요에 '${other}학기'가 들어 있습니다. 선택한 학기는 ${term}학기예요. 사업명을 확인해 주세요.`;
         const btn = document.getElementById('term-fix-btn');
@@ -376,7 +375,7 @@
       try {
         const v = JSON.parse(el.value || '{}');
         if (typeof v !== 'object' || v === null || Array.isArray(v)) throw new Error('{ } 로 감싼 형태여야 합니다');
-        rulesStatus.textContent = el.value.trim() === DEFAULT_RULES_TEXT.trim() ? '기본 규칙(26-1 통합본 문장)을 사용합니다.' : '바꾼 규칙을 사용합니다.';
+        rulesStatus.textContent = el.value.trim() === DEFAULT_RULES_TEXT.trim() ? '기본 규칙을 사용합니다.' : '바꾼 규칙을 사용합니다.';
         rulesStatus.style.color = '';
         return true;
       } catch (err) {
@@ -416,8 +415,7 @@
       try {
         const r = await fetch('/settings/example');
         const n = applySettings(await r.json());
-        setSemester(`${thisYY}-${thisTerm}`);  // 학기는 지금 학기로
-        showStatus(`처음 값(26-1 통합본)으로 되돌렸습니다. 학기는 지금 학기(${semInput.value})로 골랐습니다.`, false);
+        showStatus('기본값으로 되돌렸습니다. 학기는 그대로 두었습니다.', false);
       } catch (err) { showStatus('예시를 불러오지 못했습니다: ' + err.message, true); }
     });
     document.getElementById('settings-load-btn').addEventListener('click', () => document.getElementById('settings-file').click());
@@ -482,7 +480,8 @@
       const hint = document.getElementById('submit-hint');
       syncRules();
       let problem = '';
-      if (!validateRules()) problem = '관리자용 비고 문장 규칙의 형식이 잘못되었습니다.';
+      if (!semInput.value) problem = '① 학기(연도·학기)를 골라 주세요.';
+      else if (!validateRules()) problem = '관리자용 비고 문장 규칙의 형식이 잘못되었습니다.';
       else if (!rulesText.value.trim()) problem = '③ 연체료 규정에 1일 단가를 하나 이상 적어 주세요.';
       if (problem) {
         e.preventDefault();

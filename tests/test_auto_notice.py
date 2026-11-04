@@ -173,7 +173,7 @@ def test_example_settings_follow_26_1_format():
     from web.settings_file import example_settings, parse_rules_text
 
     s = example_settings()
-    assert s["기본정보"]["학기명"] == "26-1"
+    assert s["기본정보"]["학기명"] == ""
     assert s["기본정보"]["작성자"] == {"성명": "", "직위": "학생복지위원장", "소속": "학생복지위원회"}
     assert "1. 1학기 온라인 사물함 배부 사업" in s["사업개요"] and "99. 기타" in s["사업개요"]
     assert s["연체료규정"].splitlines() == [

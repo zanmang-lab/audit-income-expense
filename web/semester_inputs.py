@@ -25,8 +25,8 @@ TEMPLATE_EXTENSIONS = {".hwp", ".hwpx"}
 _LINE_MAPPING = re.compile(r"^\s*(\d+)\s*[:\.\|]\s*(.+?)\s*$")
 
 
-# 26-1 학복위 통합본 기준 예시 — 처음 쓰는 사람이 형식을 따라 적을 수 있게 미리 채운다.
-EXAMPLE_SEMESTER = "26-1"
+# 기본값 — 처음 쓰는 사람이 형식을 따라 적을 수 있게 미리 채운다(학복위 통합본 형식). 학기는 비워 둔다.
+EXAMPLE_SEMESTER = ""
 EXAMPLE_AUTHOR = {"소속": "학생복지위원회", "직위": "학생복지위원장"}
 EXAMPLE_OVERVIEW = """0. 총학생회비 배분
 1. 1학기 온라인 사물함 배부 사업
@@ -49,7 +49,7 @@ EXAMPLE_OVERDUE_RULES = (
 
 
 def default_overdue_rules_placeholder() -> str:
-    """폼 기본값 — 26-1 연체료 규정."""
+    """폼 기본값 — 연체료 규정."""
     return EXAMPLE_OVERDUE_RULES
 
 
@@ -64,7 +64,7 @@ class UploadConfig:
 
 
 def default_business_overview_placeholder() -> str:
-    """폼 기본값 — 26-1 통합본 사업 목록."""
+    """폼 기본값 — 사업 목록."""
     return EXAMPLE_OVERVIEW
 
 

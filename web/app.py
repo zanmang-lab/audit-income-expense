@@ -485,7 +485,7 @@ async def build(request: Request, preview_id: str) -> HTMLResponse:
 
 @app.get("/settings/example")
 async def settings_example() -> JSONResponse:
-    """26-1 통합본 형식의 예시 설정 — 첫 화면 '26-1 예시로 채우기'에서 쓴다."""
+    """기본값 설정 — 첫 화면 '기본값으로 되돌리기'에서 쓴다."""
     return JSONResponse(example_settings())
 
 
