@@ -28,9 +28,8 @@
     </section>
 
     <section class="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 mb-8">
-      <p class="text-label-md font-label-md text-on-surface mb-2">처음이라면 이 순서대로 하세요</p>
+      <p class="text-label-md font-label-md text-on-surface mb-2">이 순서대로 하세요 <span class="where">(26-1 통합본 값이 미리 들어 있습니다)</span></p>
       <ol class="list-decimal list-inside text-body-md text-on-surface-variant space-y-1">
-        <li>아래 <strong>설정 파일</strong>에서 <strong>26-1 예시로 채우기</strong> (지난 학기 설정 파일이 있으면 <strong>불러오기</strong>)</li>
         <li><strong>① 학기</strong>를 고르고 책임자 성명·연락처 입력</li>
         <li><strong>② 사업개요</strong>와 <strong>③ 연체료 규정</strong>에서 이번 학기에 바뀐 것만 고치기</li>
         <li><strong>④~⑦ 파일 4개</strong>를 올리고 <strong>생성하기</strong></li>
@@ -40,30 +39,20 @@
     <form action="/generate" method="post" enctype="multipart/form-data" class="space-y-8" id="upload-form">
       {% from "includes/macros.html" import file_zone, file_zone_compact %}
 
-      <!-- 설정 파일 -->
-      <div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl">
-        <p class="text-headline-md font-headline-md text-on-surface">설정 파일 <span class="chip chip-opt">선택</span></p>
-        <p class="mt-2 text-body-md text-on-surface-variant leading-relaxed">
-          아래 ①~③과 기타 문구에 적은 내용을 저장한 파일(<code>.json</code>)입니다. 엑셀·양식 파일은 들어 있지 않습니다.
-          <strong>파일을 직접 열어 고치지 마세요.</strong> 불러온 뒤 화면에서 고치고 <strong>현재 입력으로 저장</strong>을 다시 누르면 됩니다.
-          결과 zip에도 그때 쓴 <code>설정.json</code>이 들어 있으니 다음 학기를 위해 보관하세요.
-        </p>
-        <div class="mt-4 flex gap-2 flex-wrap">
-          <button type="button" id="example-btn"
-            class="px-4 py-2 rounded-full bg-primary text-on-primary text-label-md font-label-md flex items-center gap-1">
-            <span class="material-symbols-outlined text-[18px]">auto_awesome</span>26-1 예시로 채우기
-          </button>
-          <button type="button" id="settings-load-btn"
-            class="px-4 py-2 rounded-full border border-primary text-primary text-label-md font-label-md flex items-center gap-1">
-            <span class="material-symbols-outlined text-[18px]">upload_file</span>지난 설정 파일 불러오기
-          </button>
-          <button type="button" id="settings-save-btn"
-            class="px-4 py-2 rounded-full border border-outline-variant text-on-surface text-label-md font-label-md flex items-center gap-1">
-            <span class="material-symbols-outlined text-[18px]">download</span>현재 입력으로 저장
-          </button>
-          <input type="file" id="settings-file" accept=".json,application/json" class="hidden">
+      <!-- 설정 파일 (인계받은 경우만) -->
+      <div class="border border-dashed border-outline-variant px-4 py-3 rounded-xl text-body-md text-on-surface-variant">
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span>지난 학기 결과 zip을 받았다면 그 안의 <code>설정.json</code>을</span>
+          <button type="button" id="settings-load-btn" class="text-primary font-semibold underline">불러오기</button>
+          <span class="where">— 지난 학기에 고친 사업개요·연체료 규정·문구가 그대로 채워집니다. (선택)</span>
         </div>
-        <p id="settings-status" class="mt-3 text-body-md hidden" role="status"></p>
+        <div class="mt-1 flex flex-wrap gap-x-4 where">
+          <button type="button" id="example-btn" class="underline">처음 값(26-1)으로 되돌리기</button>
+          <button type="button" id="settings-save-btn" class="underline">현재 입력을 설정 파일로 따로 저장</button>
+          <span>설정 파일은 결과 zip에 자동으로 들어갑니다.</span>
+        </div>
+        <input type="file" id="settings-file" accept=".json,application/json" class="hidden">
+        <p id="settings-status" class="mt-2 text-body-md hidden" role="status"></p>
       </div>
 
       <!-- ① 학기·책임자 -->
@@ -428,7 +417,7 @@
         const r = await fetch('/settings/example');
         const n = applySettings(await r.json());
         setSemester(`${thisYY}-${thisTerm}`);  // 학기는 지금 학기로
-        showStatus(`26-1 통합본 형식으로 ${n}개 항목을 채웠습니다. 학기는 지금 학기(${semInput.value})로 골랐습니다. 사업명·연체료에서 바뀐 것만 고치세요.`, false);
+        showStatus(`처음 값(26-1 통합본)으로 되돌렸습니다. 학기는 지금 학기(${semInput.value})로 골랐습니다.`, false);
       } catch (err) { showStatus('예시를 불러오지 못했습니다: ' + err.message, true); }
     });
     document.getElementById('settings-load-btn').addEventListener('click', () => document.getElementById('settings-file').click());
@@ -437,7 +426,7 @@
       if (!file) return;
       try {
         const n = applySettings(JSON.parse(await file.text()));
-        showStatus(`'${file.name}'에서 ${n}개 항목을 채웠습니다. 학기가 이번 학기인지 확인해 주세요.`, false);
+        showStatus(`'${file.name}'에서 ${n}개 항목을 채웠습니다. ① 학기를 이번 학기로 골라 주세요.`, false);
       } catch (err) { showStatus('설정 파일을 읽지 못했습니다: ' + err.message, true); }
       e.target.value = '';
     });
