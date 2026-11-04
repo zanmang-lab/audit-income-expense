@@ -86,6 +86,7 @@ def _iter_from_rows(
 
     text_dates: list[str] = []
     text_amounts: list[str] = []
+    class_spacing: dict[tuple[str, str], int] = {}
 
     for row_no, row in enumerate(rows[cols.header_row:], start=cols.header_row + 1):
         if is_blank_row(row):
@@ -147,6 +148,12 @@ def _iter_from_rows(
         raw_overview = cols.get(row, "overview")
         raw_class = cols.get(row, "classification")
         classification = str(raw_class).strip() if raw_class is not None else ""
+        # 구분은 띄어쓰기 없이 적는다 (26-1 최종본: '지출의 환급' → '지출의환급')
+        compact_class = "".join(classification.split())
+        if compact_class != classification:
+            key = (classification, compact_class)
+            class_spacing[key] = class_spacing.get(key, 0) + 1
+            classification = compact_class
         raw_error = cols.get(row, "error")
 
         yield LedgerRow(
@@ -163,6 +170,10 @@ def _iter_from_rows(
         )
 
     if issues is not None:
+        if class_spacing:
+            changes = ", ".join(f"'{a}'→'{b}' {n}행" for (a, b), n in class_spacing.items())
+            issues.append(InputIssue(
+                "장부", f"구분의 띄어쓰기를 붙여 적었습니다({changes}).", advisory=True, auto=True))
         for what, found in (("날짜", text_dates), ("금액", text_amounts)):
             if found:
                 sample = ", ".join(found[:3]) + (f" 외 {len(found) - 3}행" if len(found) > 3 else "")

@@ -151,3 +151,19 @@ def test_report_groups_sections():
     order = [text.index(h) for h in ("■ 입력확인", "■ 검수필요", "■ 자동처리", "■ 참고")]
     assert order == sorted(order)
     assert "[자동처리] (사업1/1페이지) 연체 1일 계산" in text
+
+
+def test_classification_spacing_is_removed_and_noted():
+    import openpyxl
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(["날짜", "사업번호", "세부번호", "기재내용", "구분", "개요", "수입", "지출"])
+    ws.append([date(2026, 3, 10), 1, 1, "가", "지출의 환급", "y", 4000, 0])
+    ws.append([date(2026, 3, 10), 1, 2, "나", "지출의환급", "y", 4000, 0])
+    issues: list[InputIssue] = []
+    grouped = parse_ledger_workbook(wb, issues=issues)
+    assert [r.classification for r in grouped[1]] == ["지출의환급", "지출의환급"]
+    assert len(split_pages(grouped[1])) == 1
+    note = [i for i in issues if i.auto and "구분의 띄어쓰기" in i.message]
+    assert note and "'지출의 환급'→'지출의환급' 1행" in note[0].message
