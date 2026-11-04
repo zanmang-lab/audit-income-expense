@@ -178,7 +178,7 @@ def _iter_from_rows(
             if found:
                 sample = ", ".join(found[:3]) + (f" 외 {len(found) - 3}행" if len(found) > 3 else "")
                 issues.append(InputIssue(
-                    "장부", f"글자로 적힌 {what} {len(found)}개를 {what}로 바꿔 읽었습니다 ({sample}). 값이 맞는지 확인해 주세요.",
+                    "장부", f"글자로 적힌 {what} {len(found)}개를 {what}{'으로' if what == '금액' else '로'} 바꿔 읽었습니다 ({sample}). 값이 맞는지 확인해 주세요.",
                     advisory=True, auto=True))
 
 
