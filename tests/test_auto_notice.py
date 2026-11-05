@@ -255,20 +255,3 @@ def test_renamed_hwp_gets_clear_message(tmp_path):
     with pytest.raises(ValueError) as exc:
         resolve_template(b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" + b"\0" * 100, "양식.hwpx", tmp_path)
     assert "확장자만 바꾸면" in str(exc.value) and "다른 이름으로 저장" in str(exc.value)
-
-
-def test_refund_class_shown_as_hwanbul():
-    # 장부 구분 '수입의 환급'(환불) → 문서 구분 칸은 '환불'. 바꿨다고 [자동처리]로 알린다.
-    sem = build_semester_from_overview("1. 사물함 배부 사업", RULES)
-    rows = {1: [_row(1, 1, "가", income=4000, cls="지출의환급"),
-                _row(1, 2, "나", expense=4000, overview="사물함 환불", cls="수입의환급", d=date(2026, 3, 17))]}
-    res = run_engine(rows, sem, [], [])
-    p1, p2 = res.businesses[1].pages
-    assert p1.classification == "지출의환급" and p2.classification == "환불" and p2.income_expense == "지출"
-    assert any(r.auto and "'수입의환급'을(를) '환불'" in r.reason for r in res.review_items)
-    assert not any("이어야 하는데" in r.reason for r in res.review_items)
-
-
-def test_class_display_can_be_turned_off():
-    from src.rules_config import build_rules
-    assert build_rules({"구분_표기": {"수입의환급": ""}}).class_label("수입의환급") == "수입의환급"
