@@ -246,3 +246,12 @@ def test_refund_class_must_match_side():
     hits = [r for r in res.review_items if "구분이 '지출의환급'이면 수입" in r.reason]
     assert len(hits) == 1 and hits[0].page_index == 3 and not hits[0].advisory
     assert res.businesses[1].pages[2].classification == "지출의환급"
+
+
+def test_renamed_hwp_gets_clear_message(tmp_path):
+    # 확장자만 .hwpx로 바꾼 .hwp(OLE 형식) — 다른 이름으로 저장하라고 안내
+    import pytest
+    from web.semester_inputs import resolve_template
+    with pytest.raises(ValueError) as exc:
+        resolve_template(b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" + b"\0" * 100, "양식.hwpx", tmp_path)
+    assert "확장자만 바꾸면" in str(exc.value) and "다른 이름으로 저장" in str(exc.value)

@@ -83,8 +83,15 @@ def resolve_template(
     upload_path.write_bytes(template_bytes)
 
     if ext == ".hwpx":
+        if template_bytes.startswith(b"\xd0\xcf\x11\xe0"):
+            raise ValueError(
+                "파일 이름은 .hwpx인데 내용은 예전 한글 형식(.hwp)입니다. 확장자만 바꾸면 hwpx가 되지 않습니다. "
+                "한글에서 양식을 열고 '파일 → 다른 이름으로 저장'에서 파일 형식을 'HWPX 문서(*.hwpx)'로 골라 저장한 뒤 올려 주세요."
+            )
         if not template_bytes.startswith(b"PK"):
-            raise ValueError("올바른 hwpx 형식이 아닙니다.")
+            raise ValueError(
+                "올바른 hwpx 형식이 아닙니다. 한글에서 '다른 이름으로 저장 → HWPX 문서(*.hwpx)'로 저장한 파일을 올려 주세요."
+            )
         return upload_path
 
     if not hwp_conversion_available():
