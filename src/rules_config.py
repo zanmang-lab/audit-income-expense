@@ -37,6 +37,8 @@ DEFAULT_RULES: dict[str, Any] = {
         "대여": ["대여", "물품대여"],
     },
     "환불페이지_키워드": ["환불"],
+    # 장부 구분 → 문서 구분 칸 표기 (띄어쓰기 무시). 바꾼 쪽은 [자동처리]로 알린다.
+    "구분_표기": {"수입의환급": "환불"},
     "환불사유_표현": {
         "당첨등록포기": "당첨 등록 포기",
         "두번송금": "두 번 송금",
@@ -88,6 +90,7 @@ class RuleSet:
     refund_groups: dict[str, tuple[str, str]]
     rental_note_kinds: dict[str, tuple[str, ...]]  # 분류 → 공백 뺀 비고 문구들
     refund_fee_advisory: str
+    class_display: dict[str, str]  # 공백 뺀 장부 구분 → 문서 구분 표기
     templates: dict[str, str]
     source: dict[str, Any]  # 설정 파일로 다시 저장할 때 쓰는 원본(기본값과 합친 것)
 
@@ -109,6 +112,9 @@ class RuleSet:
         if not reason:
             return ""
         return self.refund_reason_phrases.get(_compact(reason), reason.strip())
+
+    def class_label(self, classification: str) -> str:
+        return self.class_display.get(_compact(classification), classification)
 
     def rental_note_kind(self, note: str | None) -> str:
         compact = _compact(note or "")
@@ -178,7 +184,7 @@ def merge_with_defaults(user: dict[str, Any] | None) -> dict[str, Any]:
     for key, value in user.items():
         if str(key).startswith("_"):
             continue
-        if key in ("비고문장", "환불사유_표현", "환불사유_묶음", "연체료비고_분류", "사업종류_키워드"):
+        if key in ("비고문장", "환불사유_표현", "환불사유_묶음", "연체료비고_분류", "사업종류_키워드", "구분_표기"):
             merged[key] = {**merged[key], **_as_dict(value, key)}
         else:
             merged[key] = value
@@ -231,6 +237,12 @@ def build_rules(user: dict[str, Any] | None = None) -> RuleSet:
         )
     templates = {name: _check_template(name, templates_raw[name]) for name in TEMPLATE_FIELDS}
 
+    class_display = {
+        _compact(k): str(v).strip()
+        for k, v in _as_dict(data["구분_표기"], "구분_표기").items()
+        if str(v).strip()
+    }
+
     refund_keywords = tuple(_as_str_list(data["환불페이지_키워드"], "환불페이지_키워드"))
     if not refund_keywords:
         raise RulesError("환불페이지_키워드는 하나 이상 있어야 합니다.")
@@ -242,6 +254,7 @@ def build_rules(user: dict[str, Any] | None = None) -> RuleSet:
         refund_groups=groups,
         rental_note_kinds=note_kinds,
         refund_fee_advisory=str(data["환불수수료_안내"]).strip(),
+        class_display=class_display,
         templates=templates,
         source=data,
     )

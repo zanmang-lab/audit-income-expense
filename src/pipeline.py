@@ -200,6 +200,9 @@ def _fill_page(
     if expected_side and expected_side != page.income_expense:
         note(f"구분이 '{classification}'이면 {expected_side}이어야 하는데 장부 금액이 {page.income_expense} 칸에 있습니다. "
              f"환불(돌려준 돈)은 지출·'수입의환급', 돌려받은 돈은 수입·'지출의환급'입니다. 장부의 구분이나 금액 칸을 확인해 주세요.")
+    shown = semester.rules.class_label(classification) if classification else classification
+    if shown != classification:
+        note(f"구분 '{classification}'을(를) '{shown}'(으)로 적었습니다 (비고 규칙 '구분_표기').", auto=True)
     if not classification:
         for row in rows:
             if row.classification_needs_review:
@@ -271,7 +274,7 @@ def _fill_page(
         business_name=business_name,
         date=format_date(page.date),
         income_expense=page.income_expense,
-        classification=classification,
+        classification=shown,
         content=_page_content(rows),
         items=items,
         quantities=quantities,
