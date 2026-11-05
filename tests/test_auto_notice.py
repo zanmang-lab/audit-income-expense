@@ -234,3 +234,15 @@ def test_keyword_matching_ignores_spacing():
     assert lookup_per_day("보조배터리 1개", rules) == 1000
     assert lookup_per_day("삼각대 1개", rules) == 3000
     assert lookup_per_day("우산 1개", rules) == 2000
+
+
+def test_refund_class_must_match_side():
+    # 환불(돌려준 돈)은 지출·'수입의환급'. 수입 칸에 '수입의환급'이 있으면 검수필요로 알린다(고치지는 않음).
+    sem = build_semester_from_overview("1. 사물함 배부 사업", RULES)
+    rows = {1: [_row(1, 1, "가", income=4000, cls="지출의환급"),
+                _row(1, 2, "나", expense=4000, overview="사물함 환불", cls="수입의환급", d=date(2026, 3, 17)),
+                _row(1, 3, "다", expense=4000, overview="사물함 환불", cls="지출의환급", d=date(2026, 3, 18))]}
+    res = run_engine(rows, sem, [], [])
+    hits = [r for r in res.review_items if "구분이 '지출의환급'이면 수입" in r.reason]
+    assert len(hits) == 1 and hits[0].page_index == 3 and not hits[0].advisory
+    assert res.businesses[1].pages[2].classification == "지출의환급"

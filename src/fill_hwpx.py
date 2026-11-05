@@ -159,12 +159,32 @@ def find_label_targets(
     cells = parse_cells(table_xml)
     at = {(c.row, c.col) for c in cells}
     targets: dict[str, tuple[int, int]] = {}
+    label_cells: dict[str, object] = {}
     for field, labels in fields.items():
         for c in cells:
             if c.text in labels:
-                pos = (c.row, c.col + c.col_span)
-                if pos in at and pos not in reserved and c.row not in data_rows:
-                    targets[field] = pos
+                if c.row not in data_rows:
+                    label_cells[field] = c
+                break
+    # 1) 라벨과 같은 줄에서 시작하는 오른쪽 칸
+    for field, c in label_cells.items():
+        pos = (c.row, c.col + c.col_span)
+        if pos in at and pos not in reserved:
+            targets[field] = pos
+    # 2) 26-1 학복위 양식처럼 오른쪽 칸이 라벨과 한 줄 어긋나 병합된 경우:
+    #    라벨 줄과 겹치는 오른쪽 칸 중 아직 안 쓴 가장 위 칸
+    used = set(targets.values())
+    for field, c in label_cells.items():
+        if field in targets:
+            continue
+        label_rows = range(c.row, c.row + c.row_span)
+        for cand in sorted(cells, key=lambda x: x.row):
+            pos = (cand.row, cand.col)
+            if (cand.col == c.col + c.col_span and pos not in reserved and pos not in used
+                    and cand.row not in data_rows and not cand.text
+                    and any(r in label_rows for r in range(cand.row, cand.row + cand.row_span))):
+                targets[field] = pos
+                used.add(pos)
                 break
     return targets
 

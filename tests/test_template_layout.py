@@ -135,3 +135,23 @@ def test_too_many_rows_for_template_is_error(tmp_path):
     tpl = write_hwpx(tmp_path / "t.hwpx", standard_cells(data_rows=1))
     with pytest.raises(ValueError):
         fill_document(str(tpl), [PAGE], str(tmp_path / "o.hwpx"))
+
+
+def test_author_labels_with_offset_merges(tmp_path):
+    # 26-1 학복위 양식: 직위·성명 라벨과 오른쪽 칸이 한 줄씩 어긋나게 병합돼 있다.
+    from src.fill_hwpx import SECTION, find_label_targets, table_paragraph
+    import zipfile
+    cells = [c for c in standard_cells() if not (5 <= c[0] <= 11)]
+    cells += [
+        (5, 0, 1, 7, "책임자"), (5, 7, 1, 5, "증빙서류"),
+        (6, 0, 1, 1, "소속"), (6, 1, 1, 6, ""), (6, 7, 6, 5, ""),
+        (7, 0, 2, 1, "직위"), (7, 1, 1, 6, ""),
+        (8, 1, 2, 6, ""),
+        (9, 0, 2, 1, "성명"),
+        (10, 1, 2, 6, ""),
+        (11, 0, 1, 1, "연락처"),
+    ]
+    tpl = write_hwpx(tmp_path / "t.hwpx", cells)
+    xml = zipfile.ZipFile(tpl).read(SECTION).decode()
+    targets = find_label_targets(table_paragraph(xml), layout=analyze_template(str(tpl)))
+    assert targets == {"소속": (6, 1), "직위": (7, 1), "성명": (8, 1), "연락처": (10, 1)}

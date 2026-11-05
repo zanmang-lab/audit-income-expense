@@ -154,6 +154,10 @@ def split_refund_fee(rows: list[LedgerRow], refund_records: list[RefundRecord], 
     )
 
 
+# 환급 구분과 수입/지출이 맞아야 하는 짝 (26-1 장부: 환불 = 지출·수입의 환급, 입금 = 수입·지출의 환급)
+_REFUND_CLASS_SIDE = {"수입의환급": "지출", "지출의환급": "수입"}
+
+
 def _page_content(rows: list[LedgerRow]) -> str:
     for row in rows:
         if row.overview:
@@ -192,6 +196,10 @@ def _fill_page(
         note("장부 개요가 비어 있어 내용 칸을 비웠습니다.")
 
     classification = page.classification
+    expected_side = _REFUND_CLASS_SIDE.get(classification)
+    if expected_side and expected_side != page.income_expense:
+        note(f"구분이 '{classification}'이면 {expected_side}이어야 하는데 장부 금액이 {page.income_expense} 칸에 있습니다. "
+             f"환불(돌려준 돈)은 지출·'수입의환급', 돌려받은 돈은 수입·'지출의환급'입니다. 장부의 구분이나 금액 칸을 확인해 주세요.")
     if not classification:
         for row in rows:
             if row.classification_needs_review:
