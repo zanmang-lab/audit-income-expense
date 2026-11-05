@@ -189,6 +189,95 @@ def find_label_targets(
     return targets
 
 
+EVIDENCE_LABELS = ("증빙서류", "증빙", "증빙자료")
+
+
+def find_evidence_target(table_xml: str, layout: TemplateLayout | None = None) -> tuple[int, int] | None:
+    """'증빙서류' 라벨 아래 칸(26-1 양식), 없으면 오른쪽 칸의 좌표."""
+    layout = layout or LEGACY_LAYOUT
+    reserved = set(layout.scalar.values())
+    data_rows = set(layout.data_rows)
+    cells = parse_cells(table_xml)
+    at = {(c.row, c.col): c for c in cells}
+    for c in cells:
+        if c.text in EVIDENCE_LABELS:
+            below = at.get((c.row + c.row_span, c.col))
+            if below and not below.text and below.col_span == c.col_span and (below.row, below.col) not in reserved:
+                return (below.row, below.col)
+            right = at.get((c.row, c.col + c.col_span))
+            if right and not right.text and (right.row, right.col) not in reserved and right.row not in data_rows:
+                return (right.row, right.col)
+            return None
+    return None
+
+
+def _pic_xml(item_id: str, cell_xml: str, img, serial: int) -> str:
+    """칸 크기에 맞춘 글자처럼 취급하는 그림(<hp:pic>)."""
+    def num(pattern: str, default: int) -> int:
+        m = re.search(pattern, cell_xml)
+        return int(m.group(1)) if m else default
+    cell_w = num(r'<hp:cellSz width="(\d+)"', 30000)
+    cell_h = num(r'<hp:cellSz width="\d+" height="(\d+)"', 30000)
+    mx = num(r'<hp:cellMargin left="(\d+)"', 510) + num(r'<hp:cellMargin left="\d+" right="(\d+)"', 510)
+    my = num(r'<hp:cellMargin[^>]*top="(\d+)"', 141) + num(r'<hp:cellMargin[^>]*bottom="(\d+)"', 141)
+    box_w, box_h = max(cell_w - mx - 200, 1000), max(cell_h - my - 200, 1000)
+    w = box_w
+    h = round(w * img.height_px / img.width_px)
+    if h > box_h:
+        h = box_h
+        w = round(h * img.width_px / img.height_px)
+    pid = 1900000000 + serial
+    return (
+        f'<hp:pic textWrap="SQUARE" textFlow="BOTH_SIDES" reverse="0" id="{pid}" zOrder="{serial}" '
+        f'numberingType="PICTURE" lock="0" dropcapstyle="None" href="" groupLevel="0" instid="{pid}">'
+        f'<hp:offset x="0" y="0"/><hp:orgSz width="{w}" height="{h}"/><hp:curSz width="{w}" height="{h}"/>'
+        f'<hp:flip horizontal="0" vertical="0"/>'
+        f'<hp:rotationInfo angle="0" centerX="{w // 2}" centerY="{h // 2}" rotateimage="1"/>'
+        '<hp:renderingInfo><hc:transMatrix e1="1" e2="0" e3="0" e4="0" e5="1" e6="0"/>'
+        '<hc:scaMatrix e1="1" e2="0" e3="0" e4="0" e5="1" e6="0"/>'
+        '<hc:rotMatrix e1="1" e2="0" e3="0" e4="0" e5="1" e6="0"/></hp:renderingInfo>'
+        f'<hp:imgRect><hc:pt0 x="0" y="0"/><hc:pt1 x="{w}" y="0"/><hc:pt2 x="{w}" y="{h}"/><hc:pt3 x="0" y="{h}"/></hp:imgRect>'
+        f'<hp:imgClip left="0" right="{w}" top="0" bottom="{h}"/>'
+        '<hp:inMargin left="0" right="0" top="0" bottom="0"/>'
+        f'<hp:imgDim dimwidth="{w}" dimheight="{h}"/>'
+        f'<hc:img binaryItemIDRef="{item_id}" bright="0" contrast="0" effect="REAL_PIC" alpha="0"/>'
+        f'<hp:effects/><hp:sz width="{w}" height="{h}" widthRelTo="ABSOLUTE" heightRelTo="ABSOLUTE" protect="0"/>'
+        '<hp:pos treatAsChar="1" affectLSpacing="0" flowWithText="1" allowOverlap="0" holdAnchorAndSO="0" '
+        'vertRelTo="PARA" horzRelTo="COLUMN" vertAlign="TOP" horzAlign="LEFT" vertOffset="0" horzOffset="0"/>'
+        '<hp:outMargin left="0" right="0" top="0" bottom="0"/><hp:shapeComment/></hp:pic>'
+    )
+
+
+def _put_picture(cell_xml: str, pic: str) -> str:
+    if re.search(r"<hp:t>[^<]+</hp:t>|<hp:pic\b", cell_xml):
+        return cell_xml  # 이미 무언가 있는 칸은 건드리지 않는다
+    updated, n = re.subn(r'<hp:run charPrIDRef="(\d+)"\s*/>', lambda m: f'<hp:run charPrIDRef="{m.group(1)}">{pic}</hp:run>', cell_xml, count=1)
+    if n:
+        return updated
+    return re.sub(r"(<hp:p\b[^>]*>)", lambda m: m.group(1) + f'<hp:run charPrIDRef="0">{pic}</hp:run>', cell_xml, count=1)
+
+
+def _register_image(work: str, img) -> str:
+    """BinData에 그림을 넣고 content.hpf 매니페스트에 등록. 항목 id를 돌려준다."""
+    hpf_path = os.path.join(work, "Contents", "content.hpf")
+    hpf = open(hpf_path, encoding="utf-8").read() if os.path.exists(hpf_path) else ""
+    n = 1
+    while f'id="EVI{n:04d}"' in hpf or os.path.exists(os.path.join(work, "BinData", f"EVI{n:04d}.{img.ext}")):
+        n += 1
+    item_id = f"EVI{n:04d}"
+    os.makedirs(os.path.join(work, "BinData"), exist_ok=True)
+    with open(os.path.join(work, "BinData", f"{item_id}.{img.ext}"), "wb") as f:
+        f.write(img.data)
+    media = "image/jpeg" if img.ext == "jpg" else "image/png"
+    # 한/글이 저장한 hwpx처럼 매니페스트에만 등록한다(isEmbeded="1"이 없으면 그림이 빠진다).
+    item = f'<opf:item id="{item_id}" href="BinData/{item_id}.{img.ext}" media-type="{media}" isEmbeded="1"/>'
+    if "</opf:manifest>" in hpf:
+        hpf = hpf.replace("</opf:manifest>", item + "</opf:manifest>", 1)
+        with open(hpf_path, "w", encoding="utf-8") as f:
+            f.write(hpf)
+    return item_id
+
+
 def missing_label_fields(template_path: str, fields: list[str], layout: TemplateLayout | None = None) -> list[str]:
     """양식에서 라벨을 찾지 못한 작성자 정보 항목."""
     with zipfile.ZipFile(template_path) as z:
@@ -208,6 +297,7 @@ def _fill_table(
     label_targets: dict | None = None,
     layout: TemplateLayout | None = None,
     problems: list[str] | None = None,
+    picture: tuple[tuple[int, int], str, object, int] | None = None,
 ) -> str:
     layout = layout or LEGACY_LAYOUT
     scalar_at = layout.field_at()
@@ -228,7 +318,10 @@ def _fill_table(
     for c in cells:
         r, col = _cell_addr(c)
         new_c = None
-        if (r, col) in by_pos:
+        if picture and (r, col) == picture[0]:
+            _, item_id, img, serial = picture
+            new_c = _put_picture(c, _pic_xml(item_id, c, img, serial))
+        elif (r, col) in by_pos:
             val = page.get(by_pos[(r, col)], "")
             if val:
                 new_c = _replace_cell_text(c, val)
@@ -257,12 +350,21 @@ def _build_section_xml(
     pages: list,
     layout: TemplateLayout | None = None,
     problems: list[str] | None = None,
+    evidence_image=None,
 ) -> str:
     xml = open(os.path.join(template_dir, SECTION), encoding="utf-8").read()
     # 표를 감싼 문단 <hp:p ...> ... <hp:tbl>...</hp:tbl> ... </hp:p> 통째 추출
     table_para = table_paragraph(xml)
     layout = layout or analyze_table(table_para)
     label_targets = find_label_targets(table_para, layout=layout)
+    item_id, evidence_pos = None, None
+    if evidence_image is not None and any(pg.get("증빙이미지") for pg in pages):
+        evidence_pos = find_evidence_target(table_para, layout)
+        if evidence_pos is None:
+            if problems is not None:
+                problems.append("양식에서 '증빙서류' 칸을 찾지 못해 물품 대여 증빙 이미지를 넣지 못했습니다.")
+        else:
+            item_id = _register_image(template_dir, evidence_image)
     blocks = []
     for i, pg in enumerate(pages):
         if len(pg.get("rows", [])) > layout.rows_per_page:
@@ -270,7 +372,8 @@ def _build_section_xml(
                 f"페이지 '{pg.get('사업번호', '')}' 세목 {len(pg['rows'])}줄 — "
                 f"양식 세목 칸은 {layout.rows_per_page}줄입니다."
             )
-        b = _fill_table(table_para, pg, label_targets, layout, problems)
+        picture = (evidence_pos, item_id, evidence_image, i + 1) if item_id and pg.get("증빙이미지") else None
+        b = _fill_table(table_para, pg, label_targets, layout, problems, picture)
         if i > 0:
             b = b.replace('pageBreak="0"', 'pageBreak="1"', 1)  # 2페이지부터 페이지나눔
         blocks.append(b)
@@ -283,8 +386,12 @@ def fill_document(
     out_path: str,
     layout: TemplateLayout | None = None,
     problems: list[str] | None = None,
+    evidence_image=None,
 ):
     """template_path(.hwpx)를 pages로 채워 out_path(.hwpx)로 저장.
+
+    evidence_image(src.evidence_image.EvidenceImage)가 있으면 '증빙이미지'가 참인 쪽의
+    증빙서류 칸에 그림을 넣는다.
 
     layout을 주지 않으면 양식에서 칸 위치를 찾는다(src/template_layout.py).
     값을 넣지 못한 칸은 problems에 남긴다.
@@ -296,7 +403,7 @@ def fill_document(
     try:
         with zipfile.ZipFile(template_path) as z:
             z.extractall(work)
-        new_xml = _build_section_xml(work, pages, layout, problems)
+        new_xml = _build_section_xml(work, pages, layout, problems, evidence_image)
         with open(os.path.join(work, SECTION), "w", encoding="utf-8") as f:
             f.write(new_xml)
         if os.path.exists(out_path):

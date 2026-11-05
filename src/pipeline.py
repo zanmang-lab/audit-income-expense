@@ -58,6 +58,7 @@ class FilledPage:
     total_amount: str
     evidence: str = ""
     remark: str = ""
+    evidence_image: bool = False  # 증빙서류 칸에 물품 대여 안내 그림을 넣는 쪽
     review_flags: list[str] = field(default_factory=list)
 
 
@@ -279,6 +280,7 @@ def _fill_page(
         total_amount=format_amount(total),
         evidence="",
         remark=remark_text,
+        evidence_image=semester.role_for(business_no) == "rental" and page.income_expense == "수입",
     )
     return filled, reviews
 
@@ -398,6 +400,7 @@ def filled_page_to_hwpx_dict(page: FilledPage) -> dict[str, Any]:
         "내용": page.content,
         "총액": page.total_amount,
         "비고": page.remark,
+        "증빙이미지": page.evidence_image,
         "rows": rows,
     }
 
@@ -410,8 +413,11 @@ def export_hwpx_files(
     author: dict[str, str] | None = None,
     layout: TemplateLayout | None = None,
     problems: list[str] | None = None,
+    evidence_image=None,
 ) -> list[str]:
-    """사업명별 .hwpx 파일을 output_dir에 생성. author는 모든 페이지의 작성자 칸에 들어간다."""
+    """사업명별 .hwpx 파일을 output_dir에 생성. author는 모든 페이지의 작성자 칸에 들어간다.
+
+    evidence_image가 있으면 물품 대여 사업 수입 쪽 증빙서류 칸에 그 그림을 넣는다."""
     from .fill_hwpx import fill_document
 
     prefix = filename_prefix or "수입지출내역서"
@@ -422,6 +428,7 @@ def export_hwpx_files(
         pages = [{**(author or {}), **filled_page_to_hwpx_dict(p)} for p in biz.pages]
         out_name = f"{prefix}_{business_no}_{biz.business_name}.hwpx"
         out_path = os.path.join(output_dir, out_name)
-        fill_document(template_path, pages, out_path, layout=layout, problems=problems)
+        fill_document(template_path, pages, out_path, layout=layout, problems=problems,
+                      evidence_image=evidence_image)
         written.append(out_path)
     return written

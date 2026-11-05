@@ -155,3 +155,49 @@ def test_author_labels_with_offset_merges(tmp_path):
     xml = zipfile.ZipFile(tpl).read(SECTION).decode()
     targets = find_label_targets(table_paragraph(xml), layout=analyze_template(str(tpl)))
     assert targets == {"소속": (6, 1), "직위": (7, 1), "성명": (8, 1), "연락처": (10, 1)}
+
+
+def _evi_img():
+    from io import BytesIO
+    from PIL import Image
+    from src.evidence_image import load_evidence_image
+    buf = BytesIO()
+    Image.new("RGB", (200, 100), "white").save(buf, "PNG")
+    return load_evidence_image(buf.getvalue())
+
+
+def test_evidence_picture_goes_below_label_in_26_1_layout(tmp_path):
+    # 26-1 양식: '증빙서류' 라벨(5행 7열) 아래 큰 칸(6행 7열)에 그림
+    import zipfile
+    from src.fill_hwpx import SECTION, find_evidence_target, table_paragraph
+    cells = [c for c in standard_cells() if not (5 <= c[0] <= 11)]
+    cells += [(5, 0, 1, 7, "책임자"), (5, 7, 1, 5, "증빙서류"), (6, 0, 1, 1, "소속"), (6, 1, 1, 6, ""),
+              (6, 7, 6, 5, ""), (7, 0, 5, 7, "")]
+    tpl = write_hwpx(tmp_path / "t.hwpx", cells)
+    layout = analyze_template(str(tpl))
+    assert find_evidence_target(table_paragraph(zipfile.ZipFile(tpl).read(SECTION).decode()), layout) == (6, 7)
+    out = tmp_path / "o.hwpx"
+    pages = [{**PAGE, "증빙이미지": True}, {**PAGE, "증빙이미지": False}]
+    fill_document(str(tpl), pages, str(out), evidence_image=_evi_img())
+    z = zipfile.ZipFile(out)
+    x = z.read(SECTION).decode()
+    assert x.count("<hp:pic") == 1 and 'binaryItemIDRef="EVI0001"' in x
+    assert "BinData/EVI0001.png" in z.namelist()
+
+
+def test_evidence_picture_right_of_label_in_standard_layout(tmp_path):
+    import zipfile
+    from src.fill_hwpx import SECTION, find_evidence_target, table_paragraph
+    tpl = write_hwpx(tmp_path / "t.hwpx", standard_cells())
+    xml = table_paragraph(zipfile.ZipFile(tpl).read(SECTION).decode())
+    assert find_evidence_target(xml, analyze_template(str(tpl))) == (6, 7)
+
+
+def test_no_picture_without_flag(tmp_path):
+    import zipfile
+    tpl = write_hwpx(tmp_path / "t.hwpx", standard_cells())
+    out = tmp_path / "o.hwpx"
+    fill_document(str(tpl), [PAGE], str(out), evidence_image=_evi_img())
+    z = zipfile.ZipFile(out)
+    assert "<hp:pic" not in z.read("Contents/section0.xml").decode()
+    assert not any(n.startswith("BinData/") for n in z.namelist())

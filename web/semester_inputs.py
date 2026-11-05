@@ -61,6 +61,7 @@ class UploadConfig:
     template_hwpx_path: Path
     overdue_rules_summary: str = ""
     settings_json: str = ""  # 결과 zip에 넣을 설정.json (다음에 다시 불러오기용)
+    rental_evidence: object | None = "default"  # 물품 대여 증빙 그림: "default"=기본 그림, None=넣지 않음, EvidenceImage
 
 
 def default_business_overview_placeholder() -> str:

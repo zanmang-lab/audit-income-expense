@@ -255,3 +255,18 @@ def test_renamed_hwp_gets_clear_message(tmp_path):
     with pytest.raises(ValueError) as exc:
         resolve_template(b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" + b"\0" * 100, "양식.hwpx", tmp_path)
     assert "확장자만 바꾸면" in str(exc.value) and "다른 이름으로 저장" in str(exc.value)
+
+
+def test_rental_income_pages_get_evidence_flag():
+    sem = build_semester_from_overview("1. 사물함 배부 사업\n3. 물품 대여 사업\n4. 봄 축제", RULES)
+    rows = {3: [_row(3, 1, "가", income=2000), _row(3, 2, "가게", expense=5000, d=date(2026, 3, 17))],
+            1: [_row(1, 1, "나", income=4000)], 4: [_row(4, 1, "가게", expense=100)]}
+    res = run_engine(rows, sem, [], [])
+    assert [p.evidence_image for p in res.businesses[3].pages] == [True, False]
+    assert not res.businesses[1].pages[0].evidence_image and not res.businesses[4].pages[0].evidence_image
+
+
+def test_default_rental_evidence_image_exists():
+    from src.evidence_image import default_rental_evidence
+    img = default_rental_evidence()
+    assert img is not None and img.ext == "jpg" and img.width_px > 0

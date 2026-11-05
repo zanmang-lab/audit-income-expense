@@ -192,6 +192,10 @@
           <input name="film_fee_per_sheet" data-remember inputmode="numeric" value="{{ default_film_fee }}" class="field mt-1" style="max-width:200px">
           <span class="where block">필름값 금액 ÷ 이 가격 = 필름 장수. 기본값: 1,000</span>
         </label>
+        <label class="block mt-4"><span class="text-label-md">물품 대여 증빙 이미지</span>
+          <input type="file" name="rental_evidence" accept=".png,.jpg,.jpeg,image/png,image/jpeg" class="field mt-1">
+          <span class="where block">물품 대여 사업 수입 쪽 증빙서류 칸에 들어갈 그림. 비워 두면 기본 그림(제39대 물품 대여 사업 안내사항·연체료 규정)이 들어갑니다. 규정 안내문이 바뀐 학기에만 올리세요.</span>
+        </label>
       </details>
 
       <!-- 관리자용 -->

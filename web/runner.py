@@ -195,9 +195,24 @@ def prepare_run(
             input_issues.append(InputIssue(
                 "양식", f"'{name}' 라벨 칸을 찾지 못해 입력한 {name}을(를) 넣지 않았습니다.", advisory=True))
 
+    evidence = _rental_evidence(upload)
+    evidence_pages = sum(1 for b in result.businesses.values() for p in b.pages if p.evidence_image)
+    if evidence is not None and evidence_pages:
+        input_issues.append(InputIssue(
+            "증빙서류", f"물품 대여 사업 수입 쪽 {evidence_pages}쪽의 증빙서류 칸에 {evidence.label}를 넣었습니다. "
+                       "이번 학기 연체료 규정과 같은 그림인지 확인해 주세요.", advisory=True, auto=True))
+
     return PreparedRun(
         work_dir=work_dir, upload=upload, layout=layout, result=result, input_issues=input_issues,
     )
+
+
+def _rental_evidence(upload: UploadConfig):
+    from src.evidence_image import default_rental_evidence
+
+    if upload.rental_evidence == "default":
+        return default_rental_evidence()
+    return upload.rental_evidence
 
 
 def build_run(prep: PreparedRun) -> PipelineResult:
@@ -221,6 +236,7 @@ def build_run(prep: PreparedRun) -> PipelineResult:
             author=semester.author,
             layout=prep.layout,
             problems=problems,
+            evidence_image=_rental_evidence(upload),
         ),
     )
     issues += [InputIssue("양식", p) for p in problems]

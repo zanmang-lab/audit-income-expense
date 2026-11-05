@@ -265,6 +265,7 @@ async def generate(
     overdue: UploadFile = File(...),
     refund: UploadFile = File(...),
     template: UploadFile = File(...),
+    rental_evidence: UploadFile | None = File(None),
     overdue_rules_text: str = Form(...),
     semester_label: str = Form(""),
     author_name: str = Form(""),
@@ -350,7 +351,18 @@ async def generate(
         shutil.rmtree(work_dir, ignore_errors=True)
         raise HTTPException(400, str(exc)) from exc
 
+    rental_evidence_image = "default"
+    if rental_evidence is not None and rental_evidence.filename:
+        from src.evidence_image import load_evidence_image
+        try:
+            rental_evidence_image = load_evidence_image(
+                await _read_bytes(rental_evidence, "물품 대여 증빙 이미지"), "올린 물품 대여 증빙 이미지")
+        except ValueError as exc:
+            shutil.rmtree(work_dir, ignore_errors=True)
+            raise HTTPException(400, f"[물품 대여 증빙 이미지] {exc}") from exc
+
     upload_config = UploadConfig(
+        rental_evidence=rental_evidence_image,
         semester=semester,
         business_overview=overview_text,
         overdue_rules_text=rules_text,

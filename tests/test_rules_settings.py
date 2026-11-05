@@ -269,3 +269,9 @@ def test_web_bad_rules_is_400(client):
     r = _post(client, '{"비고문장": {"연체": "{없는칸}"}}')
     assert r.status_code == 400
     assert "{없는칸}" in r.text
+
+
+def test_retired_rule_key_is_ignored():
+    # 잠깐 배포됐던 '구분_표기'가 든 예전 설정 파일도 그대로 불러올 수 있어야 한다.
+    from src.rules_config import build_rules
+    assert build_rules({"구분_표기": {"수입의환급": "환불"}}).source == build_rules().source

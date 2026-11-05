@@ -70,6 +70,8 @@ DEFAULT_RULES: dict[str, Any] = {
 }
 
 RULE_KEYS = tuple(DEFAULT_RULES)
+# 예전 설정 파일에만 있을 수 있는, 지금은 쓰지 않는 항목 — 오류 없이 무시한다.
+RETIRED_KEYS = {"구분_표기"}
 
 
 class RulesError(ValueError):
@@ -169,6 +171,7 @@ def merge_with_defaults(user: dict[str, Any] | None) -> dict[str, Any]:
     if not user:
         return merged
     _as_dict(user, "비고규칙")
+    user = {k: v for k, v in user.items() if k not in RETIRED_KEYS}
     unknown = [k for k in user if k not in DEFAULT_RULES and not str(k).startswith("_")]
     if unknown:
         raise RulesError(
