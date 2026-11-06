@@ -36,7 +36,7 @@
       <div><dt>사업</dt><dd>{{ business_count }}<small>개</small></dd></div>
       <div><dt>쪽</dt><dd>{{ page_count }}<small>쪽</small></dd></div>
       <div><dt>꼭 고칠 것</dt><dd class="{% if must %}lvl-must{% endif %}">{{ must }}<small>건</small></dd>
-        <p class="sub">확인할 것 {{ review_groups[1].count }}건, 참고 {{ review_groups[2].count }}건</p></div>
+        <p class="sub">확인할 것 {{ review_groups[1].count }}건</p></div>
     </dl>
     <p class="mt-3 small muted">{{ masking_message }}</p>
 
@@ -66,15 +66,8 @@
     {% endfor %}
     {% endif %}
 
-    {% set g = review_groups[2] %}
-    {% if g.count %}
-    <details class="group mt-6">
-      <summary><span class="tag tag-note">참고 {{ g.count }}건</span> <span class="small muted">알고만 있으면 되는 것</span></summary>
-      {% for k in g.kinds %}
-      <p class="kind-title">{{ k.kind }}</p>
-      <ul>{% for line in k.lines %}<li>{{ line }}</li>{% endfor %}</ul>
-      {% endfor %}
-    </details>
+    {% if hidden_count %}
+    <p class="mt-6 small muted">이 밖에 알고만 있으면 되는 참고 {{ hidden_count }}건(띄어쓰기 정리, 합계 줄 건너뜀 등)은 화면에 띄우지 않고 검수목록 파일에만 적어 두었습니다.</p>
     {% endif %}
 
     <h2 class="section-title">이번에 쓴 연체료 규정</h2>

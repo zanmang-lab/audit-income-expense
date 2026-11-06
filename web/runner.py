@@ -175,10 +175,13 @@ def prepare_run(
         input_issues.append(InputIssue(
             "사업개요", f"비고를 미리 채운 사업: {', '.join(auto_remark)}. 나머지 사업의 비고는 비워 두었습니다.",
             advisory=True))
-    else:
+    if not any(semester.role_for(no) == "locker" for no in ledger_by_business) or \
+            not any(semester.role_for(no) == "rental" for no in ledger_by_business):
+        missing = [n for r, n in (("locker", "사물함 배부"), ("rental", "물품 대여"))
+                   if not any(semester.role_for(no) == r for no in ledger_by_business)]
         input_issues.append(InputIssue(
-            "사업개요", "사물함 배부·물품 대여 사업을 찾지 못해 비고를 모두 비워 두었습니다. "
-                       "사업개요의 사업명에 '사물함 배부' 또는 '물품 대여'가 들어 있는지 확인해 주세요.", advisory=True))
+            "사업개요", f"{'·'.join(missing)} 사업을 찾지 못해 그 비고를 채우지 못했습니다. "
+                       f"사업개요의 사업명에 '{missing[0]}'이(가) 들어 있는지 확인해 주세요."))
     unused = sorted(set(semester.businesses) - set(ledger_by_business))
     if unused:
         input_issues.append(InputIssue(

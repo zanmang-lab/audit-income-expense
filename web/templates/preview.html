@@ -24,19 +24,22 @@
         <div><dt>쪽</dt><dd>{{ view.page_count }}<small>쪽</small></dd><p class="sub">한 쪽에 세목 {{ view.rows_per_page }}줄</p></div>
         <div><dt>꼭 고칠 것</dt><dd class="{% if view.required_count %}lvl-must{% endif %}">{{ view.required_count }}<small>건</small></dd><p class="sub">빠졌거나 틀렸을 수 있음</p></div>
         <div><dt>확인할 것</dt><dd class="{% if view.auto_count %}lvl-check{% endif %}">{{ view.auto_count }}<small>건</small></dd><p class="sub">프로그램이 계산함</p></div>
-        <div><dt>참고</dt><dd class="muted">{{ view.advisory_count }}<small>건</small></dd><p class="sub">알고만 있으면 됨</p></div>
+        <div><dt>참고</dt><dd class="muted">{{ view.advisory_count }}<small>건</small></dd><p class="sub">검수목록 파일에만</p></div>
       </dl>
 
       <p class="mt-3 small muted">{{ masking_message }}</p>
 
-      {% if view.input_required or view.input_advisory or view.input_auto %}
-      <h2 class="section-title">입력 파일 확인</h2>
-      {% if view.input_required %}<p class="help">꼭 고칠 것이 붙은 엑셀 행은 결과 문서에서 빠져 있습니다. 엑셀을 고친 뒤 다시 올려 주세요.</p>{% endif %}
-      <div class="panel">
-        {% for item in view.input_required %}<div class="issue"><span class="tag tag-must">꼭 고칠 것</span><span>{{ item }}</span></div>{% endfor %}
-        {% for item in view.input_auto %}<div class="issue"><span class="tag tag-check">확인할 것</span><span>{{ item }}</span></div>{% endfor %}
-        {% for item in view.input_advisory %}<div class="issue"><span class="tag tag-note">참고</span><span class="muted">{{ item }}</span></div>{% endfor %}
-      </div>
+      {% for item in view.input_advisory %}
+      <p class="note note-amber mt-3">{{ item }}</p>
+      {% endfor %}
+      {% if view.input_required %}
+      <section class="note note-red mt-6" role="alert">
+        <p><b>문서에서 빠진 것이 있습니다 ({{ view.input_required|length }}건)</b></p>
+        <p class="small mt-1">엑셀을 고친 뒤 처음 화면에서 다시 올려 주세요.</p>
+        <ul class="mt-2" style="padding-left:18px">
+          {% for item in view.input_required %}<li class="small">{{ item }}</li>{% endfor %}
+        </ul>
+      </section>
       {% endif %}
 
       <div class="row between" style="margin-top:36px">
@@ -65,11 +68,10 @@
               <span class="nowrap">총액 <b>{{ page.total }}</b>원</span>
             </header>
 
-            {% if page.required or page.auto or page.advisory %}
+            {% if page.required or page.auto %}
             <div class="pg-issues">
               {% for r in page.required %}<p class="pg-issue lvl-must"><span class="tag tag-must">꼭 고칠 것</span><span>{{ r }}</span></p>{% endfor %}
               {% for a in page.auto %}<p class="pg-issue lvl-check"><span class="tag tag-check">확인할 것</span><span>{{ a }}</span></p>{% endfor %}
-              {% for a in page.advisory %}<p class="pg-issue muted"><span class="tag tag-note">참고</span><span>{{ a }}</span></p>{% endfor %}
             </div>
             {% endif %}
 

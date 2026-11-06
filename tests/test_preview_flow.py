@@ -209,3 +209,12 @@ def test_result_zip_has_combined_file_checklist_and_no_extras(client):
     assert [c.value for c in ws[1]] == ["확인", "단계", "종류", "사업", "쪽", "문서 사업번호", "대상", "내용"]
     levels = [row[1] for row in ws.iter_rows(min_row=2, values_only=True)]
     assert levels and levels == sorted(levels, key=["꼭 고칠 것", "확인할 것", "참고"].index)
+
+
+def test_screen_shows_only_what_needs_action(client):
+    # 파일 전체에 대한 참고(비고 채운 사업 등)는 화면에 없고 검수목록 파일에만 남는다
+    r, pid = _generate(client)
+    assert "비고를 미리 채운 사업" not in r.text
+    res = client.post(f"/build/{pid}", data={})
+    assert "비고를 미리 채운 사업" not in res.text and "검수목록 파일에만" in res.text
+    assert "비고를 미리 채운 사업" in _zip(client, res.text).read("검수목록.txt").decode()

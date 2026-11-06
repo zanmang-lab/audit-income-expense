@@ -100,12 +100,15 @@ def build_preview_view(prep: PreparedRun) -> PreviewView:
     return PreviewView(
         businesses=businesses,
         input_required=[f"{i.where}: {i.message}" for i in prep.input_issues if i.level == MUST],
-        input_advisory=[f"{i.where}: {i.message}" for i in prep.input_issues if i.level == NOTE],
-        input_auto=[f"{i.where}: {i.message}" for i in prep.input_issues if i.level == CHECK],
+        # 화면에는 할 일이 있는 것만. 파일 전체에 대한 확인할 것·참고는 검수목록 파일에만 남긴다.
+        # 양식이 평소와 달라 칸을 새로 찾은 경우는 결과 문서를 열어 봐야 하므로 보여 준다
+        input_advisory=[f"{i.message}" for i in prep.input_issues if i.level != MUST and i.source == "양식"],
+        input_auto=[],
         page_count=prep.page_count,
         required_count=sum(1 for i in [*prep.result.review_items, *prep.input_issues] if i.level == MUST),
-        advisory_count=sum(1 for i in [*prep.result.review_items, *prep.input_issues] if i.level == NOTE),
-        auto_count=sum(1 for i in [*prep.result.review_items, *prep.input_issues] if i.level == CHECK),
+        advisory_count=sum(1 for i in [*prep.result.review_items, *prep.input_issues] if i.level == NOTE)
+        + sum(1 for i in prep.input_issues if i.level == CHECK),
+        auto_count=sum(1 for i in prep.result.review_items if i.level == CHECK),
         edit_count=sum(len(v) for v in prep.edits.values()),
         rows_per_page=prep.layout.rows_per_page,
     )
