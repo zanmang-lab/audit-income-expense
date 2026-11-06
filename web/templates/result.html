@@ -1,150 +1,62 @@
 <!DOCTYPE html>
-<html class="light" lang="ko">
+<html lang="ko">
 <head>
-  {% set page_title = "생성 완료" %}
+  {% set page_title = "결과 받기" %}
   {% include "includes/head.html" %}
 </head>
-<body class="bg-background text-on-surface min-h-screen flex flex-col">
+<body>
   {% include "includes/header.html" %}
+  {% from "includes/icons.html" import icon %}
+  {% set must = review_groups[0].lines|length %}
 
-  <main class="flex-grow pt-8 pb-12 px-4 sm:px-6">
-    <div class="max-w-[800px] mx-auto space-y-8">
-      <nav class="flex gap-6 flex-wrap">
-        {% if preview_id %}
-        <a href="/preview/{{ preview_id }}" class="flex items-center gap-2 text-primary font-label-md hover:underline transition-opacity">
-          <span class="material-symbols-outlined text-[18px]">edit_note</span>
-          미리보기로 돌아가 다시 고치기
-        </a>
-        {% endif %}
-        <a href="/" class="flex items-center gap-2 text-primary font-label-md hover:underline transition-opacity">
-          <span class="material-symbols-outlined text-[18px]">arrow_back</span>
-          다시 업로드
-        </a>
-      </nav>
+  <main class="wrap">
+    <p class="row small" style="gap:20px">
+      {% if preview_id %}<a href="/preview/{{ preview_id }}">{{ icon('back') }} 미리보기로 돌아가 다시 고치기</a>{% endif %}
+      <a href="/">처음 화면으로</a>
+    </p>
 
-      <section class="space-y-2">
-        <div class="flex items-center gap-3 flex-wrap">
-          <h2 class="text-display font-display text-on-surface">생성 완료</h2>
-          <span class="bg-primary-container text-on-primary-container px-3 py-1 rounded-full text-label-md font-label-md">완료</span>
-        </div>
-        <p class="text-body-lg font-body-lg text-on-surface-variant">
-          문서 생성이 끝났습니다. 검수 목록을 확인한 뒤 zip을 다운로드하세요.
-          {% if edit_count %}미리보기에서 고친 칸 {{ edit_count }}개가 반영되었습니다.{% endif %}
-        </p>
-      </section>
+    <h1 class="page-title mt-4">문서를 만들었습니다</h1>
+    <p class="lead">zip을 받은 뒤 통합본을 한글에서 열고, 검수목록의 '꼭 고칠 것'부터 확인하세요.{% if edit_count %} 미리보기에서 고친 칸 {{ edit_count }}개가 반영되었습니다.{% endif %}</p>
 
-      {% if masking_ok %}
-      <section class="bg-[#F0FDF4] border-l-4 border-[#16A34A] p-5 rounded-r-lg flex items-center gap-4 shadow-sm">
-        <div class="bg-[#16A34A] text-white p-2 rounded-full shrink-0">
-          <span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-        </div>
-        <div>
-          <h3 class="text-headline-md font-headline-md text-[#15803D]">감지된 민감정보 없음</h3>
-          <p class="text-body-md font-body-md text-[#166534]">{{ masking_message }}</p>
-        </div>
-      </section>
-      {% else %}
-      <section class="bg-[#FFFBEB] border-l-4 border-[#B45309] p-5 rounded-r-lg flex items-center gap-4 shadow-sm">
-        <div class="bg-[#B45309] text-white p-2 rounded-full shrink-0">
-          <span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">privacy_tip</span>
-        </div>
-        <div>
-          <h3 class="text-headline-md font-headline-md text-[#92400E]">민감정보 열 제거됨</h3>
-          <p class="text-body-md font-body-md text-[#78350F]">{{ masking_message }}</p>
-        </div>
-      </section>
-      {% endif %}
+    <section class="download" aria-labelledby="dl-title">
+      <h2 id="dl-title">결과 zip</h2>
+      <p class="mt-1 muted">통합본 1개와 사업별 파일 {{ hwpx_count }}개, 검수목록이 들어 있습니다. 다운로드 링크는 약 10분 뒤 사라집니다.</p>
+      <p class="mt-4"><a href="/download/{{ job_id }}" class="btn btn-primary btn-big">{{ icon('download', 'icon-lg') }} 결과 zip 받기</a></p>
+      <p class="note note-amber mt-4"><b>이 zip은 지우지 말고 학생회 드라이브 등에 그대로 보관해 주세요.</b> 다음 학기 담당자가 첫 화면의 '지난 학기 zip 올리기'에 이 파일을 올리면 사업개요와 연체료 규정 등이 이번 학기 값으로 채워집니다.</p>
+      <ul class="filelist mt-4" aria-label="zip 안의 파일">
+        <li><b>…_통합본.hwpx</b><span>모든 사업을 사업번호 순서로 이은 초안. 보통 이 파일을 열어 검수합니다.</span></li>
+        <li><b>사업별 파일/</b><span>같은 내용을 사업마다 나눈 파일. 필요할 때만 씁니다.</span></li>
+        <li><b>검수목록.xlsx</b><span>고치거나 확인할 곳 체크리스트. 같은 내용의 메모장용 검수목록.txt도 있습니다.</span></li>
+        <li><b>설정.json</b><span>이번에 쓴 입력값. 다음 학기용이라 열어 볼 필요는 없습니다.</span></li>
+        <li><b>읽어주세요.txt</b><span>이 목록.</span></li>
+      </ul>
+    </section>
 
-      <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl flex flex-col justify-between">
-          <span class="text-label-md font-label-md text-on-surface-variant">처리 사업 수</span>
-          <div class="flex items-end justify-between mt-2">
-            <span class="text-display font-display text-primary">{{ business_count }}개</span>
-            <span class="material-symbols-outlined text-outline">account_balance</span>
-          </div>
-        </div>
-        <div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl flex flex-col justify-between">
-          <span class="text-label-md font-label-md text-on-surface-variant">총 페이지 수</span>
-          <div class="flex items-end justify-between mt-2">
-            <span class="text-display font-display text-on-surface">{{ page_count }}p</span>
-            <span class="material-symbols-outlined text-outline">description</span>
-          </div>
-        </div>
-        {% set must = review_groups[0].lines|length %}
-        <div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl flex flex-col justify-between {% if must > 0 %}border-b-4 border-error{% endif %}">
-          <span class="text-label-md font-label-md text-on-surface-variant">꼭 고칠 것</span>
-          <div class="flex items-end justify-between mt-2">
-            <span class="text-display font-display {% if must > 0 %}text-error{% else %}text-primary{% endif %}">{{ must }}건</span>
-            <span class="material-symbols-outlined {% if must > 0 %}text-error{% else %}text-outline{% endif %}">{% if must > 0 %}priority_high{% else %}check_circle{% endif %}</span>
-          </div>
-          <span class="text-xs text-on-surface-variant mt-1">확인할 것 {{ review_groups[1].lines|length }}건 · 참고 {{ review_groups[2].lines|length }}건</span>
-        </div>
+    <dl class="tally tally-3">
+      <div><dt>사업</dt><dd>{{ business_count }}<small>개</small></dd></div>
+      <div><dt>쪽</dt><dd>{{ page_count }}<small>쪽</small></dd></div>
+      <div><dt>꼭 고칠 것</dt><dd class="{% if must %}lvl-must{% endif %}">{{ must }}<small>건</small></dd>
+        <p class="sub">확인할 것 {{ review_groups[1].lines|length }}건, 참고 {{ review_groups[2].lines|length }}건</p></div>
+    </dl>
+    <p class="mt-3 small muted">{{ masking_message }}</p>
 
-        <div class="md:col-span-3 bg-surface-container-low p-4 rounded-lg border border-outline-variant">
-          <div class="flex items-center gap-2 mb-2">
-            <span class="material-symbols-outlined text-on-surface-variant text-[18px]">receipt_long</span>
-            <h4 class="text-label-md font-label-md text-on-surface-variant">인식한 연체료 규정</h4>
-          </div>
-          <pre class="text-body-md text-on-surface-variant whitespace-pre-wrap font-sans m-0">{{ rules_summary }}</pre>
-        </div>
+    <h2 class="section-title">검수 항목</h2>
+    <p class="help">검수목록.xlsx에 같은 내용이 체크리스트로 있습니다. 쪽은 사업별 파일 기준이고, 괄호 안은 문서에 찍힌 사업번호입니다.</p>
+    {% for g in review_groups %}{% if g.lines %}
+    <details class="group {% if loop.index == 1 %}group-must{% endif %}" {% if loop.index == 1 %}open{% endif %}>
+      <summary>
+        <span class="tag {% if loop.index == 1 %}tag-must{% elif loop.index == 2 %}tag-check{% else %}tag-note{% endif %}">{{ g.level }} {{ g.lines|length }}건</span>
+        <span class="small muted">{{ g.help }}</span>
+      </summary>
+      <ul>{% for line in g.lines %}<li>{{ line }}</li>{% endfor %}</ul>
+    </details>
+    {% endif %}{% endfor %}
+    {% if not must and not review_groups[1].lines and not review_groups[2].lines %}
+    <p class="note note-green mt-2">검수 항목이 없습니다.</p>
+    {% endif %}
 
-        <div class="md:col-span-3 bg-surface-container-lowest border border-outline-variant p-4 rounded-lg">
-          <p class="text-label-md font-label-md text-on-surface-variant mb-1">생성 파일</p>
-          <p class="text-body-md text-on-surface">통합본 1개 + 사업별 hwpx {{ hwpx_count }}개</p>
-        </div>
-      </section>
-
-      <section class="space-y-3">
-        <h3 class="text-headline-md font-headline-md text-on-surface px-1">검수 항목</h3>
-        <p class="text-body-md text-on-surface-variant px-1">zip 안 <b>검수목록.xlsx</b>에 같은 내용이 체크리스트로 있습니다. <b>꼭 고칠 것</b>부터 보세요.</p>
-        {% for g in review_groups %}{% if g.lines %}
-        <details class="bg-white border rounded-lg p-4 {% if loop.index == 1 %}border-error{% elif loop.index == 2 %}border-[#BFDBFE]{% else %}border-outline-variant{% endif %}" {% if loop.index == 1 %}open{% endif %}>
-          <summary class="cursor-pointer text-body-md"><b>{{ g.level }} {{ g.lines|length }}건</b> — {{ g.help }}</summary>
-          <ul class="mt-3 space-y-1 text-body-md list-disc list-inside">
-            {% for line in g.lines %}<li>{{ line }}</li>{% endfor %}
-          </ul>
-        </details>
-        {% endif %}{% endfor %}
-      </section>
-
-      <section class="bg-surface-container border border-outline-variant rounded-2xl p-8 text-center space-y-6">
-        <div class="mx-auto w-16 h-16 bg-primary-container text-on-primary-container rounded-full flex items-center justify-center">
-          <span class="material-symbols-outlined text-[32px]" style="font-variation-settings: 'FILL' 1;">folder_zip</span>
-        </div>
-        <div class="space-y-2">
-          <h3 class="text-headline-lg font-headline-lg text-on-surface">작성 결과물 준비 완료</h3>
-          <p class="text-body-md text-on-surface-variant">아래 버튼을 눌러 생성된 모든 문서를 한꺼번에 다운로드하세요.</p>
-          <p class="text-body-md bg-[#FFFBEB] border border-[#FCD34D] text-[#78350F] rounded-lg p-3 text-left">
-            <b>이 zip은 지우지 말고 학생회 드라이브 등에 그대로 보관해 주세요.</b>
-            다음 학기 담당자가 첫 화면 맨 위 '지난 학기 결과 zip 올리기'에 이 zip을 올리면 사업개요·연체료 규정 등이 이번 학기 값으로 채워집니다.
-          </p>
-        </div>
-        <a href="/download/{{ job_id }}"
-          class="w-full bg-primary text-on-primary text-headline-md font-headline-md py-4 rounded-xl flex items-center justify-center gap-3 hover:bg-on-primary-fixed-variant transition-all active:scale-[0.98] shadow-lg">
-          <span class="material-symbols-outlined">download</span>
-          결과 zip 다운로드
-        </a>
-        <div class="pt-6 border-t border-outline-variant text-left space-y-4">
-          <div class="flex items-start gap-2">
-            <span class="material-symbols-outlined text-primary text-[20px] shrink-0">info</span>
-            <div class="space-y-1">
-              <p class="text-label-md font-label-md text-on-surface font-bold">Zip 파일 구성</p>
-              <ul class="text-body-md text-on-surface-variant list-disc list-inside space-y-1">
-                <li><b>통합본.hwpx</b> — 모든 사업을 한 파일로 이은 초안. 보통 이 파일을 열어 검수합니다</li>
-                <li>사업별 파일/ — 같은 내용을 사업마다 나눈 파일(필요할 때만)</li>
-                <li><b>검수목록.xlsx</b> — 고치거나 확인할 곳 체크리스트 (검수목록.txt는 같은 내용의 메모장용)</li>
-                <li>설정.json — 이번에 쓴 입력값(다음 학기용, 열어 볼 필요 없음)</li>
-                <li>읽어주세요.txt — 이 목록</li>
-              </ul>
-            </div>
-          </div>
-          <div class="bg-error-container text-on-error-container p-3 rounded-lg flex items-center gap-3">
-            <span class="material-symbols-outlined text-[20px] progress-pulse">timer</span>
-            <p class="text-label-md font-label-md">보안을 위해 다운로드 링크는 약 10분 후 만료됩니다.</p>
-          </div>
-        </div>
-      </section>
-    </div>
+    <h2 class="section-title">이번에 쓴 연체료 규정</h2>
+    <pre class="panel small" style="white-space:pre-wrap;font-family:inherit;padding:12px 18px">{{ rules_summary }}</pre>
   </main>
 </body>
 </html>

@@ -1,245 +1,207 @@
 <!DOCTYPE html>
-<html class="light" lang="ko">
+<html lang="ko">
 <head>
-  {% set page_title = "업로드" %}
+  {% set page_title = "입력" %}
   {% include "includes/head.html" %}
-  <style>
-    .chip { display:inline-block; font-size:12px; padding:1px 6px; border-radius:4px; vertical-align:middle; }
-    .chip-req { background:#FDE2E1; color:#B3261E; }
-    .chip-opt { background:#ECEFF4; color:#475467; }
-    .where { font-size:12px; color:#475467; line-height:1.6; }
-    .where b { color:#1D2433; }
-    .field { width:100%; padding:10px 12px; border:1px solid #C4C6CF; border-radius:8px; font-size:15px; background:#fff; color:#1D2433; }
-    .field:focus { outline:none; border-color:#2F5EA8; }
-    .rules-table td { padding:4px; vertical-align:top; }
-    .hidden { display:none; }  /* 디자인 파일(CDN)을 못 불러와도 숨김이 동작하도록 */
-  </style>
 </head>
-<body class="bg-background text-on-background min-h-screen flex flex-col">
+<body>
   {% include "includes/header.html" %}
+  {% from "includes/macros.html" import file_zone %}
+  {% from "includes/icons.html" import icon %}
 
-  <main class="flex-1 px-4 py-8 md:px-6 max-w-[800px] mx-auto w-full">
-    <section class="mb-6">
-      <h2 class="text-display font-display text-on-surface mb-2">수입지출내역서 자동 작성</h2>
-      <p class="text-body-lg font-body-lg text-on-surface-variant">
-        장부·연체료 목록·환불자 목록과 양식을 올리면 수입지출내역서 <strong>초안</strong>(통합본)을 만듭니다.
+  <main class="wrap">
+    <h1 class="page-title">수입지출내역서 초안 만들기</h1>
+    <p class="lead">장부와 연체료·환불자 목록, 빈 양식을 올리면 사업별 수입지출내역서 초안을 통합본 한 파일로 만들어 드립니다.</p>
+
+    <ol class="howto" aria-label="사용 순서">
+      <li><b>① 학기와 책임자</b>학기를 고르고 책임자 성명·연락처를 적습니다.</li>
+      <li><b>② ~ ③ 바뀐 것만 고치기</b>사업개요와 연체료 규정에는 기본값이 들어 있습니다.</li>
+      <li><b>④ ~ ⑦ 파일 올리기</b>생성하기 → 미리보기 확인 → 결과 zip을 받습니다.</li>
+    </ol>
+
+    <section class="aside" aria-labelledby="carry-title">
+      <p><span id="carry-title" class="aside-title">지난 학기 결과 zip이 있나요?</span>
+        처음이면 건너뛰세요.</p>
+      <p class="mt-1">지난 학기에 이 프로그램으로 받은 zip을 압축을 풀지 말고 그대로 올리면, 아래 칸이 지난 학기 값으로 채워집니다(학기는 빼고). 그다음에는 화면에 보이는 값으로 문서를 만듭니다.</p>
+      <p class="row mt-2">
+        <button type="button" id="settings-load-btn" class="btn btn-line">{{ icon('upload') }} 지난 학기 zip 올리기</button>
+        <button type="button" id="example-btn" class="linkbtn linkbtn-muted">입력칸을 기본값으로 되돌리기</button>
       </p>
+      <input type="file" id="settings-file" accept=".zip,.json,application/zip,application/json" class="hidden">
+      <p id="settings-status" class="mt-2 hidden" role="status"></p>
     </section>
 
-    <section class="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 mb-8">
-      <p class="text-label-md font-label-md text-on-surface mb-2">이 순서대로 하세요 <span class="where">(입력칸에는 기본값이 미리 들어 있습니다)</span></p>
-      <ol class="list-decimal list-inside text-body-md text-on-surface-variant space-y-1">
-        <li><strong>① 학기</strong>를 고르고 책임자 성명·연락처 입력</li>
-        <li><strong>② 사업개요</strong>와 <strong>③ 연체료 규정</strong>에서 이번 학기에 바뀐 것만 고치기</li>
-        <li><strong>④~⑦ 파일 4개</strong>를 올리고 <strong>생성하기</strong> → 미리보기 확인 → 결과 zip 받기</li>
-      </ol>
-    </section>
+    <form action="/generate" method="post" enctype="multipart/form-data" id="upload-form" novalidate>
+      <div class="sheet">
 
-    <form action="/generate" method="post" enctype="multipart/form-data" class="space-y-8" id="upload-form" novalidate>
-      {% from "includes/macros.html" import file_zone, file_zone_compact %}
-
-      <!-- 지난 학기 결과 불러오기 (선택) -->
-      <div class="border border-dashed border-outline-variant px-4 py-3 rounded-xl text-body-md text-on-surface-variant">
-        <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span class="chip chip-opt">선택 · 처음이면 건너뛰세요</span>
-          <span>지난 학기 결과 zip이 있으면</span>
-          <button type="button" id="settings-load-btn" class="text-primary font-semibold underline">그 zip 올리기</button>
-        </div>
-        <p class="where mt-1">
-          압축을 풀지 말고 그대로 올리면 아래 칸이 지난 학기 값으로 채워집니다(학기는 빼고). 그다음에는 <b>화면에 보이는 값</b>으로 만듭니다.
-        </p>
-        <div class="mt-1 where"><button type="button" id="example-btn" class="underline">입력칸을 기본값으로 되돌리기</button></div>
-        <input type="file" id="settings-file" accept=".zip,.json,application/zip,application/json" class="hidden">
-        <p id="settings-status" class="mt-2 text-body-md hidden" role="status"></p>
-      </div>
-
-      <!-- ① 학기·책임자 -->
-      <div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl">
-        <p class="text-headline-md font-headline-md text-on-surface">① 학기 · 책임자</p>
-
-        <div class="mt-4">
-          <p class="text-label-md font-label-md">학기 <span class="chip chip-req">필수</span></p>
-          <div class="mt-1 flex gap-2 items-center flex-wrap">
-            <select id="sem-year" class="field" style="width:auto"><option value="">연도 선택</option></select>
-            <span>년</span>
-            <select id="sem-term" class="field" style="width:auto">
-              <option value="">학기 선택</option>
-              <option value="1">1학기</option>
-              <option value="2">2학기</option>
-            </select>
-            <input type="hidden" name="semester_label" id="semester_label" data-remember>
+        <section class="step" aria-labelledby="s1">
+          <span class="step-num">1</span>
+          <div class="step-body">
+            <h2 class="step-title" id="s1">학기와 책임자</h2>
+            <div class="mt-4">
+              <span class="label">학기 <span class="req">필수</span></span>
+              <div class="row mt-1">
+                <select id="sem-year" class="field" aria-label="연도"><option value="">연도 선택</option></select>
+                <select id="sem-term" class="field" aria-label="학기">
+                  <option value="">학기 선택</option>
+                  <option value="1">1학기</option>
+                  <option value="2">2학기</option>
+                </select>
+                <input type="hidden" name="semester_label" id="semester_label" data-remember>
+              </div>
+              <p class="inline-preview">문서 표기 <b id="sem-preview">학기를 고르세요</b>, 결과 파일 이름 <code id="file-preview">학기_수입지출내역서_통합본.hwpx</code></p>
+            </div>
+            <div class="mt-6">
+              <span class="label">책임자 <span class="opt">선택</span></span>
+              <p class="help">모든 쪽의 책임자 칸에 똑같이 들어갑니다. 비워 둔 칸은 양식에 적힌 그대로 둡니다.</p>
+              <div class="grid-2 mt-2">
+                <label class="label">소속
+                  <input name="author_affiliation" data-remember class="field" value="{{ example_author['소속'] }}" placeholder="예: 학생복지위원회"></label>
+                <label class="label">직위
+                  <input name="author_position" data-remember class="field" value="{{ example_author['직위'] }}" placeholder="예: 학생복지위원장"></label>
+                <label class="label">성명
+                  <input name="author_name" data-remember class="field" placeholder="예: 홍길동" autocomplete="off"></label>
+                <label class="label">연락처 <span class="opt">저장하지 않음</span>
+                  <input name="author_contact" id="author_contact" class="field" placeholder="예: 010-1234-5678" autocomplete="off"
+                    pattern="0\d{1,2}-\d{3,4}-\d{4}" title="010-1234-5678처럼 하이픈(-)을 넣어 적어 주세요"></label>
+              </div>
+            </div>
           </div>
-          <p class="where mt-1">표기 <b id="sem-preview">(학기를 고르세요)</b> · 결과 파일 이름 <code id="file-preview">학기_수입지출내역서_1_사업명.hwpx</code></p>
-        </div>
+        </section>
 
-        <div class="mt-5">
-          <p class="text-label-md font-label-md">책임자 <span class="chip chip-opt">선택</span></p>
-          <p class="where mt-1">모든 쪽의 <b>책임자</b> 칸(소속·직위·성명·연락처)에 똑같이 들어갑니다. 기본값은 위원장 정보입니다. 비워 둔 칸은 양식에 적힌 그대로 둡니다.</p>
-          <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <label class="block"><span class="text-xs">소속</span>
-              <input name="author_affiliation" data-remember class="field mt-1" value="{{ example_author['소속'] }}" placeholder="예: 학생복지위원회"></label>
-            <label class="block"><span class="text-xs">직위</span>
-              <input name="author_position" data-remember class="field mt-1" value="{{ example_author['직위'] }}" placeholder="예: 학생복지위원장"></label>
-            <label class="block"><span class="text-xs">성명</span>
-              <input name="author_name" data-remember class="field mt-1" placeholder="예: 홍길동" autocomplete="off"></label>
-            <label class="block"><span class="text-xs">연락처 (저장·기억하지 않음)</span>
-              <input name="author_contact" id="author_contact" class="field mt-1" placeholder="예: 010-1234-5678" autocomplete="off"
-                pattern="0\d{1,2}-\d{3,4}-\d{4}" title="010-1234-5678처럼 하이픈(-)을 넣어 적어 주세요"></label>
+        <section class="step" aria-labelledby="s2">
+          <span class="step-num">2</span>
+          <div class="step-body">
+            <h2 class="step-title" id="s2"><label for="business_overview">사업개요</label> <span class="req">필수</span></h2>
+            <p class="help">사업계획서(예산안)의 사업 목록을 한 줄에 하나씩 <code>번호. 사업명</code>으로 적습니다. 번호는 장부의 사업번호와 같아야 하고, 사업명은 문서의 사업명 칸에 그대로 들어갑니다.</p>
+            <textarea id="business_overview" name="business_overview" required rows="13" class="field mt-2">{{ default_overview }}</textarea>
+            <div id="term-warning" class="hidden note note-amber mt-2">
+              <span id="term-warning-text"></span>
+              <button type="button" id="term-fix-btn" class="linkbtn"></button>
+            </div>
+            <details class="example">
+              <summary>비고는 어느 사업에 미리 채워지나요?</summary>
+              <p class="mt-2">사업명에 <code>사물함 배부</code>가 있으면 사물함 사업(대여비 문구, 환불 사유), <code>물품 대여</code>가 있으면 물품 대여 사업(연체료 문장, 증빙 사진)으로 보고 비고를 미리 채웁니다. 나머지 사업의 비고는 비워 둡니다. 어느 사업에 채웠는지는 검수목록 '참고'에 나옵니다.</p>
+              <p class="mt-2">이 두 사업의 이름을 다르게 적어야 하면 줄 끝에 <code>[사물함]</code> 또는 <code>[대여]</code>를 붙이세요.</p>
+            </details>
           </div>
+        </section>
+
+        <section class="step" aria-labelledby="s3">
+          <span class="step-num">3</span>
+          <div class="step-body">
+            <h2 class="step-title" id="s3">연체료 규정 <span class="req">필수</span></h2>
+            <p class="help">물품 대여 규정표의 1일 연체료입니다. 연체일수(연체료 ÷ 1일 단가)를 계산할 때 씁니다. 물품 이름은 연체료 목록에 적는 이름과 같게 쓰고, 쉼표로 구분합니다.</p>
+            <table class="rules-table">
+              <thead><tr><th class="col-price">1일 단가(원)</th><th>물품</th><th class="col-del"></th></tr></thead>
+              <tbody id="rules-rows"></tbody>
+              <tbody>
+                <tr class="rule-other">
+                  <td><input id="rule-default-price" class="field" inputmode="numeric" placeholder="예: 2,000" aria-label="그 외 물품 1일 단가"></td>
+                  <td>그 외 물품 <span class="muted small">위에 없는 모든 물품</span></td>
+                  <td></td>
+                </tr>
+              </tbody>
+            </table>
+            <button type="button" id="rule-add-btn" class="linkbtn mt-2">줄 추가</button>
+            <p id="rules-table-status" class="help"></p>
+            <textarea id="overdue_rules_text" name="overdue_rules_text" class="hidden">{{ default_overdue_rules }}</textarea>
+          </div>
+        </section>
+
+        <section class="step" aria-labelledby="s4">
+          <span class="step-num">4</span>
+          <div class="step-body">
+            <h2 class="step-title" id="s4">수입지출 양식 <span class="req">필수</span></h2>
+            <p class="help">학복위 수입지출내역서 빈 양식 한 장(.hwpx). .hwp 양식은 한글에서 <b>파일 → 다른 이름으로 저장 → HWPX 문서</b>로 저장해서 올리세요. 확장자만 바꾸면 안 됩니다.</p>
+            {{ file_zone("template", "template", ".hwp,.hwpx", "누르거나 파일을 끌어다 놓으세요", "HWPX", big=true) }}
+          </div>
+        </section>
+
+        <section class="step" aria-labelledby="s5">
+          <span class="step-num">5</span>
+          <div class="step-body">
+            <h2 class="step-title" id="s5">장부 <span class="req">필수</span></h2>
+            <p class="help">학복위 엑셀 장부. 장부의 <b>개요</b>가 문서의 내용 칸이 되니, 통합본에 쓸 문구로 적어 두면 고칠 일이 줄어듭니다.</p>
+            {{ file_zone("ledger", "ledger", ".xlsx", "장부 엑셀 파일 고르기", "XLSX") }}
+            {{ examples.ledger | safe }}
+          </div>
+        </section>
+
+        <section class="step" aria-labelledby="s6">
+          <span class="step-num">6</span>
+          <div class="step-body">
+            <h2 class="step-title" id="s6">연체료 목록 <span class="req">필수</span></h2>
+            <p class="help">반납일, 대여물품, 성명, 연체료, 비고가 있는 목록. 다른 사람이 대신 냈으면 비고에 <code>입금자'으로 입금</code>, 필름은 <code>필름값</code>, 분실·파손은 <code>손망실비</code>라고 적습니다.</p>
+            {{ file_zone("overdue", "overdue", ".xlsx", "연체료 목록 엑셀 파일 고르기", "XLSX") }}
+            {{ examples.overdue | safe }}
+          </div>
+        </section>
+
+        <section class="step" aria-labelledby="s7">
+          <span class="step-num">7</span>
+          <div class="step-body">
+            <h2 class="step-title" id="s7">환불자 목록 <span class="req">필수</span></h2>
+            <p class="help">사물함 환불자의 이름, 환불금액, 사유. 환불금액을 수수료를 뺀 원금으로 적으면 장부 금액과의 차이로 수수료 줄을 나눕니다. 전화번호·계좌번호 열은 빼고 올리는 것이 좋고, 남아 있어도 서버가 지웁니다.</p>
+            {{ file_zone("refund", "refund", ".xlsx", "환불자 목록 엑셀 파일 고르기", "XLSX") }}
+            {{ examples.refund | safe }}
+          </div>
+        </section>
+      </div>
+
+      <details class="fold" id="basic-info">
+        <summary><span>기타 문구 <span class="opt">대여비·필름 가격·안내문이 바뀐 학기에만</span></span><span class="chev">{{ icon('chev') }}</span></summary>
+        <div class="fold-body">
+          <label class="label">사물함 비고 첫 줄
+            <textarea name="locker_deposit_remark" data-remember rows="2" class="field">{{ default_locker_remark }}</textarea></label>
+          <p class="help">사물함 사업 입금·환불 쪽 비고의 첫 줄입니다.</p>
+          <label class="label mt-4">폴라로이드 필름 1장 가격(원)
+            <input name="film_fee_per_sheet" data-remember inputmode="numeric" value="{{ default_film_fee }}" class="field" style="max-width:180px"></label>
+          <p class="help">필름값 ÷ 이 가격 = 필름 장수</p>
+          <label class="label mt-4">물품 대여 증빙 이미지
+            <input type="file" name="rental_evidence" accept=".png,.jpg,.jpeg,image/png,image/jpeg" class="field"></label>
+          <p class="help">물품 대여 사업 수입 쪽 증빙서류 칸에 들어갈 그림입니다. 비워 두면 기본 그림(제39대 물품 대여 사업 안내사항)이 들어갑니다.</p>
         </div>
-      </div>
-
-      <!-- ② 사업개요 -->
-      <div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl">
-        <label for="business_overview" class="text-headline-md font-headline-md text-on-surface block">
-          ② 사업개요 <span class="chip chip-req">필수</span>
-        </label>
-        <p class="where mt-2">
-          <b>어디를 보고</b>: 사업계획서(예산안)의 사업 목록 · <b>번호</b>: 장부 <b>사업번호</b> 열과 같은 번호 ·
-          <b>형식</b>: 한 줄에 <code>번호. 사업명</code> — 사업명이 문서의 사업명 칸에 그대로 들어갑니다.
-        </p>
-        <p class="where mt-1">예: <code>1. 1학기 온라인 사물함 배부 사업</code> · <code>4. 봄 축제</code> · <code>98. 관리운영비</code> · <code>99. 기타</code></p>
-        <textarea id="business_overview" name="business_overview" required rows="13"
-          class="field mt-3 leading-relaxed">{{ default_overview }}</textarea>
-        <div id="term-warning" class="hidden mt-2 p-3 rounded-lg bg-[#FFFBEB] border border-[#FCD34D] text-body-md text-[#92400E]">
-          <span id="term-warning-text"></span>
-          <button type="button" id="term-fix-btn" class="ml-2 underline font-semibold"></button>
-        </div>
-        <details class="mt-3">
-          <summary class="where cursor-pointer text-primary">비고는 어느 사업에 미리 채워지나요?</summary>
-          <p class="where mt-2">
-            사업명에 <code>사물함 배부</code>가 있으면 사물함 사업(대여비 문구·환불 사유), <code>물품 대여</code>가 있으면 물품 대여 사업(연체료 문장·증빙 사진)으로 보고 비고를 미리 채웁니다.
-            나머지 사업은 비고를 비워 둡니다(검수하면서 직접 적음). 어느 사업에 채웠는지는 검수목록 '참고'에 나옵니다.
-            이 두 사업의 이름을 다르게 적어야 하면 줄 끝에 <code>[사물함]</code> 또는 <code>[대여]</code>를 붙이세요.
-          </p>
-        </details>
-      </div>
-
-      <!-- ③ 연체료 규정 -->
-      <div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl">
-        <p class="text-headline-md font-headline-md text-on-surface">③ 연체료 규정 <span class="chip chip-req">필수</span></p>
-        <p class="where mt-2">
-          <b>어디를 보고</b>: 물품 대여 규정표의 1일 연체료 · 물품 대여 사업 비고의 <b>연체 일수</b>(연체료 ÷ 1일 단가) 계산에 씁니다.
-          물품은 쉼표로 구분하고, 연체료 목록의 대여물품 이름과 같은 말로 적으세요. <code>돗자리(소)</code>와 <code>돗자리</code>처럼 괄호까지 다르면 다른 물품입니다.
-        </p>
-        <table class="rules-table w-full mt-3">
-          <thead><tr class="text-xs text-on-surface-variant"><td style="width:150px">1일 단가(원)</td><td>물품 (쉼표로 구분)</td><td style="width:40px"></td></tr></thead>
-          <tbody id="rules-rows"></tbody>
-          <tbody>
-            <tr>
-              <td><input id="rule-default-price" class="field" inputmode="numeric" placeholder="예: 2,000"></td>
-              <td class="pt-3 text-body-md">그 외 물품 <span class="where">(위에 없는 모든 물품)</span></td>
-              <td></td>
-            </tr>
-          </tbody>
-        </table>
-        <button type="button" id="rule-add-btn" class="mt-2 text-label-md text-primary hover:underline">+ 줄 추가</button>
-        <p id="rules-table-status" class="where mt-2"></p>
-        <textarea id="overdue_rules_text" name="overdue_rules_text" class="hidden">{{ default_overdue_rules }}</textarea>
-      </div>
-
-      <!-- ④ 양식 -->
-      <div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl">
-        <div class="flex justify-between items-center mb-2 flex-wrap gap-2">
-          <label for="template" class="text-headline-md font-headline-md text-on-surface">④ 수입지출 양식 <span class="chip chip-req">필수</span></label>
-          <span class="text-xs text-on-surface-variant">.hwpx (.hwp는 한글에서 hwpx로 저장)</span>
-        </div>
-        <p class="where mb-3"><b>무엇을</b>: 학복위 수입/지출 내역서 빈 양식 한 장(사업번호·사업명·날짜·세목·수량·단가·총액·비고 칸이 있는 표).</p>
-        {{ file_zone("template", "template", ".hwp,.hwpx", "upload_file", "파일을 드래그하거나 클릭하여 업로드", "hwpx 파일만 됩니다") }}
-        <p class="mt-2 text-xs text-amber-800"><strong>hwpx</strong>만 올릴 수 있습니다. .hwp 양식은 한글에서 '파일 → 다른 이름으로 저장 → HWPX 문서'로 저장해 올리세요(확장자만 바꾸면 안 됩니다). 결과도 hwpx로 받습니다.</p>
-      </div>
-
-      <!-- ⑤ 장부 -->
-      <div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl">
-        <label for="ledger" class="text-headline-md font-headline-md text-on-surface block mb-2">⑤ 장부 (.xlsx) <span class="chip chip-req">필수</span></label>
-        <p class="where mb-3"><b>무엇을</b>: 학복위 엑셀 장부(예: 학복위 엑셀장부 공유용). 장부의 <b>개요 열이 문서의 내용 칸</b>이 되니 통합본에 쓸 문구로 적어 두면 고칠 일이 줄어듭니다.</p>
-        {{ file_zone_compact("ledger", "ledger", ".xlsx", "table_view", "엑셀 파일을 선택하세요") }}
-        {{ examples.ledger | safe }}
-      </div>
-
-      <!-- ⑥ 연체료 목록 -->
-      <div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl">
-        <label for="overdue" class="text-headline-md font-headline-md text-on-surface block mb-2">⑥ 연체료 목록 (.xlsx) <span class="chip chip-req">필수</span></label>
-        <p class="where mb-3"><b>무엇을</b>: 학기 연체료 목록(반납일·대여물품·성명·연체료·비고). 다른 사람이 대신 입금했으면 비고에 <code>입금자'으로 입금</code>, 필름은 <code>필름값</code>, 분실·파손은 <code>손망실비</code>.</p>
-        {{ file_zone_compact("overdue", "overdue", ".xlsx", "assignment_late", "연체 내역 엑셀 업로드") }}
-        {{ examples.overdue | safe }}
-      </div>
-
-      <!-- ⑦ 환불자 목록 -->
-      <div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl">
-        <label for="refund" class="text-headline-md font-headline-md text-on-surface block mb-2">⑦ 환불자 목록 (.xlsx) <span class="chip chip-req">필수</span></label>
-        <p class="where mb-3"><b>무엇을</b>: 사물함 환불자 목록(이름·환불금액·사유). 환불금액을 <b>원금</b>(수수료 제외)으로 적으면 장부 금액과의 차이로 수수료 줄을 나눕니다.</p>
-        {{ file_zone_compact("refund", "refund", ".xlsx", "payments", "환불 명단 엑셀 업로드") }}
-        <p class="mt-3 text-xs text-error flex items-center gap-1"><span class="material-symbols-outlined text-sm">privacy_tip</span>전화번호·계좌번호 열은 빼고 올리는 것을 권장합니다(남아 있어도 서버가 지웁니다).</p>
-        {{ examples.refund | safe }}
-      </div>
-
-      <!-- 기타 문구 -->
-      <details class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl group" id="basic-info">
-        <summary class="cursor-pointer list-none flex justify-between items-center gap-2 select-none">
-          <span class="text-headline-md font-headline-md text-on-surface">기타 문구 <span class="chip chip-opt">바뀐 경우에만</span></span>
-          <span class="material-symbols-outlined text-on-surface-variant transition-transform group-open:rotate-180">expand_more</span>
-        </summary>
-        <p class="where mt-2">기본값이 들어 있습니다. 대여비나 필름 가격이 바뀐 학기에만 고치세요.</p>
-        <label class="block mt-4"><span class="text-label-md">사물함 비고 첫 줄</span>
-          <textarea name="locker_deposit_remark" data-remember rows="2" class="field mt-1">{{ default_locker_remark }}</textarea>
-          <span class="where">사물함 사업 입금·환불 쪽 비고 첫 줄. 기본값: <code>전자사물함은 대여비 4,000원, 일반사물함은 대여비 2,000원</code></span>
-        </label>
-        <label class="block mt-4"><span class="text-label-md">폴라로이드 필름 1장 가격(원)</span>
-          <input name="film_fee_per_sheet" data-remember inputmode="numeric" value="{{ default_film_fee }}" class="field mt-1" style="max-width:200px">
-          <span class="where block">필름값 금액 ÷ 이 가격 = 필름 장수. 기본값: 1,000</span>
-        </label>
-        <label class="block mt-4"><span class="text-label-md">물품 대여 증빙 이미지</span>
-          <input type="file" name="rental_evidence" accept=".png,.jpg,.jpeg,image/png,image/jpeg" class="field mt-1">
-          <span class="where block">물품 대여 사업 수입 쪽 증빙서류 칸에 들어갈 그림. 비워 두면 기본 그림(제39대 물품 대여 사업 안내사항·연체료 규정)이 들어갑니다. 규정 안내문이 바뀐 학기에만 올리세요.</span>
-        </label>
       </details>
 
-      <!-- 관리자용 -->
-      <details class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl group{% if not admin %} hidden{% endif %}" id="rules-info">
-        <summary class="cursor-pointer list-none flex justify-between items-center gap-2 select-none">
-          <span class="text-headline-md font-headline-md text-on-surface-variant">비고 문장 규칙 <span class="chip chip-opt">관리자용 · 고칠 필요 없음</span></span>
-          <span class="material-symbols-outlined text-on-surface-variant transition-transform group-open:rotate-180">expand_more</span>
-        </summary>
-        <p class="where mt-2">
-          비고 문장의 말투, 환불 사유 표현 등입니다. 평소에는 열지 않아도 됩니다.
-          문장을 바꿔야 할 때만 고치고, 문장 틀의 <code>{중괄호}</code> 칸은 그대로 두세요.
-        </p>
-        <textarea id="rules_json" name="rules_json" spellcheck="false"
-          class="field mt-3 font-mono text-xs leading-relaxed" style="min-height:300px">{{ default_rules_json }}</textarea>
-        <div class="mt-2 flex justify-between items-start gap-3 flex-wrap">
-          <p id="rules-status" class="text-xs text-on-surface-variant" role="status"></p>
-          <button type="button" id="rules-reset-btn" class="text-xs text-primary hover:underline">기본값으로 되돌리기</button>
+      <details class="fold{% if not admin %} hidden{% endif %}" id="rules-info">
+        <summary><span>비고 문장 규칙 <span class="opt">관리자용</span></span><span class="chev">{{ icon('chev') }}</span></summary>
+        <div class="fold-body">
+          <p class="help">비고 문장의 말투, 환불 사유 표현 등입니다. 문장을 바꿔야 할 때만 고치고, 문장 틀의 <code>{중괄호}</code> 칸은 그대로 두세요.</p>
+          <textarea id="rules_json" name="rules_json" spellcheck="false" class="field field-mono mt-2" style="min-height:300px">{{ default_rules_json }}</textarea>
+          <div class="row between mt-2">
+            <p id="rules-status" class="small muted" role="status"></p>
+            <button type="button" id="rules-reset-btn" class="linkbtn">기본값으로 되돌리기</button>
+          </div>
+          <details class="example">
+            <summary>문장 틀마다 쓸 수 있는 칸</summary>
+            <ul class="mt-2">
+              {% for name, fields in template_fields.items() %}
+              <li class="small" style="list-style:none"><b>{{ name }}</b>: {% for f in fields %}<code>{{ '{' ~ f ~ '}' }}</code>{% if not loop.last %} {% endif %}{% endfor %}</li>
+              {% endfor %}
+            </ul>
+          </details>
         </div>
-        <details class="mt-3">
-          <summary class="text-xs text-primary cursor-pointer">문장 틀마다 쓸 수 있는 칸</summary>
-          <ul class="mt-2 text-xs text-on-surface-variant space-y-1">
-            {% for name, fields in template_fields.items() %}
-            <li><strong>{{ name }}</strong>: {% for f in fields %}<code>{{ '{' ~ f ~ '}' }}</code>{% if not loop.last %} {% endif %}{% endfor %}</li>
-            {% endfor %}
-          </ul>
-        </details>
       </details>
 
-      <div id="form-error" class="hidden bg-error-container text-on-error-container border border-error rounded-xl p-4" role="alert">
-        <p class="font-bold" id="form-error-title"></p>
-        <p class="mt-1 whitespace-pre-line" id="form-error-message"></p>
-        <p class="mt-2 text-xs">올린 파일과 입력한 값은 그대로 있습니다. 고칠 것만 고친 뒤 다시 <b>생성하기</b>를 누르세요.</p>
+      <div id="form-error" class="hidden note note-red mt-6" role="alert">
+        <p><b id="form-error-title"></b></p>
+        <p class="mt-1" id="form-error-message" style="white-space:pre-line"></p>
+        <p class="mt-2 small">올린 파일과 입력한 값은 그대로 있습니다. 문제가 된 것만 고친 뒤 다시 생성하기를 누르세요.</p>
       </div>
-      <div class="pt-2 flex flex-col items-center gap-2">
-        <p id="submit-hint" class="text-body-md text-error hidden"></p>
-        <button type="submit" id="submit-btn"
-          class="w-full md:w-auto px-12 py-4 bg-primary text-on-primary rounded-full text-headline-md font-headline-md hover:bg-on-primary-fixed-variant transition-all shadow-sm active:scale-95 flex items-center justify-center gap-2">
-          <span class="material-symbols-outlined" id="submit-icon">auto_fix_high</span>
+      <div class="submit-area">
+        <p id="submit-hint" class="submit-hint hidden"></p>
+        <button type="submit" id="submit-btn" class="btn btn-primary btn-big">
+          <span id="submit-icon" class="hidden">{{ icon('spin', 'spin') }}</span>
           <span id="submit-label">생성하기</span>
         </button>
       </div>
     </form>
-
-    <footer class="mt-16 text-center text-on-surface-variant border-t border-outline-variant pt-8 mb-8">
-      <p class="text-label-md font-label-md">업로드한 파일은 저장하지 않습니다. 미리보기는 약 30분, 다운로드 링크는 약 10분 뒤 지워집니다.</p>
-    </footer>
   </main>
+
+  <footer class="footer">
+    <p>올린 파일은 서버에 저장하지 않습니다. 미리보기는 약 30분, 다운로드 링크는 약 10분 뒤 지워집니다.</p>
+  </footer>
 
   <script>
     // ── 파일 올리기 칸 ──
@@ -248,6 +210,7 @@
       const label = zone.querySelector('.zone-label');
       const defaultText = label ? label.textContent : '';
       zone.addEventListener('click', (e) => { if (e.target !== input) input.click(); });
+      zone.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); } });
       zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drag-over'); });
       ['dragleave', 'drop'].forEach(eventName => {
         zone.addEventListener(eventName, (e) => {
@@ -263,11 +226,12 @@
       });
       input.addEventListener('change', () => {
         if (input.files.length > 0 && label) {
-          label.textContent = '업로드됨: ' + input.files[0].name;
-          zone.classList.add('border-primary', 'bg-surface-container-low');
+          const f = input.files[0];
+          label.textContent = `${f.name} (${Math.max(1, Math.round(f.size / 1024)).toLocaleString('ko-KR')}KB) · 바꾸려면 다시 누르기`;
+          zone.classList.add('is-filled');
         } else if (label) {
           label.textContent = defaultText;
-          zone.classList.remove('border-primary', 'bg-surface-container-low');
+          zone.classList.remove('is-filled');
         }
       });
     });
@@ -301,8 +265,8 @@
       const ok = yearSel.value && termSel.value;
       const label = ok ? `${yearSel.value}-${termSel.value}` : '';
       semInput.value = label;
-      document.getElementById('sem-preview').textContent = ok ? label : '(학기를 고르세요)';
-      document.getElementById('file-preview').textContent = `${ok ? label : '학기'}_수입지출내역서_1_사업명.hwpx`;
+      document.getElementById('sem-preview').textContent = ok ? label : '학기를 고르세요';
+      document.getElementById('file-preview').textContent = `${ok ? label : '학기'}_수입지출내역서_통합본.hwpx`;
       checkTerm();
     }
     yearSel.addEventListener('change', updateSemester);
@@ -345,10 +309,14 @@
     function addRuleRow(price = '', items = '') {
       const tr = document.createElement('tr');
       tr.innerHTML = `<td><input class="field rule-price" inputmode="numeric" placeholder="예: 3,000"></td>
-        <td><input class="field rule-items" placeholder="예: 폴라로이드, 앰프, 듀라테이블"></td>
-        <td><button type="button" class="rule-del text-on-surface-variant pt-2" title="이 줄 지우기">✕</button></td>`;
+        <td><textarea class="field rule-items" rows="1" placeholder="예: 폴라로이드, 앰프, 듀라테이블"></textarea></td>
+        <td><button type="button" class="rule-del linkbtn linkbtn-muted" title="이 줄 지우기" aria-label="이 줄 지우기" style="text-decoration:none;padding-top:10px">✕</button></td>`;
       tr.querySelector('.rule-price').value = won(price);
-      tr.querySelector('.rule-items').value = items;
+      const itemsEl = tr.querySelector('.rule-items');
+      itemsEl.value = items;
+      const grow = () => { itemsEl.style.height = 'auto'; itemsEl.style.height = itemsEl.scrollHeight + 2 + 'px'; };
+      itemsEl.addEventListener('input', grow);
+      requestAnimationFrame(grow);
       tr.querySelector('.rule-del').onclick = () => { tr.remove(); syncRules(); };
       tr.querySelectorAll('input').forEach(i => i.addEventListener('input', syncRules));
       tr.querySelector('.rule-price').addEventListener('blur', (e) => { e.target.value = won(e.target.value); });
@@ -485,9 +453,7 @@
     function setBusy(busy) {
       const btn = document.getElementById('submit-btn');
       btn.disabled = busy;
-      btn.classList.toggle('opacity-80', busy);
-      btn.classList.toggle('cursor-wait', busy);
-      document.getElementById('submit-icon').textContent = busy ? 'sync' : 'auto_fix_high';
+      document.getElementById('submit-icon').classList.toggle('hidden', !busy);
       document.getElementById('submit-label').textContent = busy ? '처리 중… 잠시만 기다려 주세요' : '생성하기';
     }
     document.getElementById('upload-form').addEventListener('submit', async (e) => {

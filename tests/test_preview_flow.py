@@ -151,7 +151,7 @@ def test_unknown_preview_is_404(client):
 
 def test_other_template_flows_through_preview(client):
     r, pid = _generate(client, standard_cells(shift=1, data_rows=8, labels={"총액": "합계"}))
-    assert "한 페이지 세목 8줄" in r.text
+    assert "한 쪽에 세목 8줄" in r.text
     assert "다른 양식이라 라벨로 칸을 찾았습니다" in r.text
     z = _zip(client, client.post(f"/build/{pid}", data={}).text)
     doc1 = [n for n in z.namelist() if n.endswith(".hwpx") and "_1_" in n][0]

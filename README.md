@@ -127,6 +127,7 @@ python -m pytest tests
 src/           엔진 (장부 파싱, 연체료 계산, hwpx 채우기)
                sheet_reader.py 엑셀 열 찾기 · rules_config.py 비고 규칙 기본값
                template_layout.py 양식 칸 찾기
+web/static/    화면 스타일(app.css)과 글꼴(Pretendard) — 외부 CDN 없이 동작
 web/           FastAPI 웹 앱 + UI 템플릿 (runner.py: 준비→미리보기→생성, preview.py: 미리보기)
 assets/        기본 물품 대여 증빙 그림
 docs/SPEC.md   상세 규칙 명세

@@ -1,148 +1,69 @@
-"""업로드 폼용 예시 양식 HTML 조각 (장부·연체료·환불자 목록)."""
+"""업로드 폼용 예시 표 HTML 조각 (장부·연체료·환불자 목록).
+
+이름은 모두 가상입니다(공개 화면이라 실제 학생 이름을 쓰지 않음).
+"""
+from __future__ import annotations
+
+from html import escape
 
 
-def example_block(
-    title: str,
-    *,
-    table_html: str,
-    download_href: str | None = None,
-    download_label: str | None = None,
-    extra_html: str = "",
-) -> str:
-    download = ""
-    if download_href and download_label:
-        download = (
-            f'<p class="mt-3">'
-            f'<a href="{download_href}" download class="text-primary text-label-md font-label-md hover:underline font-semibold">'
-            f"{download_label}</a></p>"
-        )
-    return f"""<details class="mt-4 group" open>
-  <summary class="text-primary text-label-md font-label-md cursor-pointer hover:underline flex items-center gap-1 list-none select-none">
-    <span class="material-symbols-outlined text-sm transition-transform group-open:rotate-180">expand_more</span>
-    {title} — 예시 양식
-  </summary>
-  <div class="mt-3 overflow-x-auto rounded-lg border border-outline-variant bg-white">
-    {table_html}
-  </div>
-  {download}
-  {extra_html}
-</details>"""
+def _table(headers: list[str], rows: list[list[str]]) -> str:
+    head = "".join(f"<th>{escape(h)}</th>" for h in headers)
+    body = "".join("<tr>" + "".join(f"<td>{escape(c)}</td>" for c in r) + "</tr>" for r in rows)
+    return f'<div class="example-scroll"><table class="example-table"><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></div>'
+
+
+def example_block(title: str, *, table_html: str, note: str, download_href: str, download_label: str) -> str:
+    return (
+        f'<details class="example"><summary>{escape(title)} 예시 보기</summary>'
+        f"{table_html}"
+        f'<p class="mt-2 muted">{note}</p>'
+        f'<p class="mt-1"><a href="{download_href}" download>{escape(download_label)}</a></p>'
+        "</details>"
+    )
 
 
 def upload_form_examples_html() -> dict[str, str]:
     return {
         "ledger": example_block(
             "장부",
-            table_html=_ledger_table(),
+            table_html=_table(
+                ["날짜", "사업번호", "세부번호", "기재내용", "구분", "개요", "수입", "지출"],
+                [
+                    ["2026-03-10", "2", "1", "전자12홍길동", "지출의 환급", "대면 사물함 수익금", "4,000", "0"],
+                    ["2026-03-23", "3", "1", "김하늘", "지출의 환급", "대여 물품 연체료 입금", "4,000", "0"],
+                ],
+            ),
+            note=(
+                "열은 머리글 이름으로 찾으니 순서나 다른 열(현금 등)은 상관없습니다. "
+                "꼭 필요한 열은 날짜, 사업번호, 기재내용, 수입, 지출이고 세부번호, 구분, 개요, 오류여부는 있으면 씁니다. "
+                "날짜는 2026-03-10, 2026.3.10, 2026년 3월 10일 모두 읽습니다. 시트가 여러 개면 DATA 시트를 고릅니다."
+            ),
             download_href="/examples/장부_예시.xlsx",
-            download_label="장부 예시.xlsx 다운로드",
+            download_label="장부 예시 파일 받기",
         ),
         "overdue": example_block(
             "연체료 목록",
-            table_html=_overdue_table(),
+            table_html=_table(
+                ["반납일(입금일)", "대여물품", "성명", "연체료", "비고"],
+                [
+                    ["2026-03-23", "보조배터리 1개", "김하늘", "4,000", ""],
+                    ["2026-03-31", "폴라로이드 필름", "이도윤", "7,000", "필름값"],
+                    ["2026-04-01", "앰프 1개", "박서연", "9,000", "최지호'으로 입금"],
+                ],
+            ),
+            note="꼭 필요한 열은 대여물품, 성명, 연체료이고 반납일과 비고는 있으면 씁니다.",
             download_href="/examples/연체료목록_예시.xlsx",
-            download_label="연체료 목록 예시.xlsx 다운로드",
+            download_label="연체료 목록 예시 파일 받기",
         ),
         "refund": example_block(
             "환불자 목록",
-            table_html=_refund_table(),
-            download_href="/examples/환불자목록_예시.xlsx",
-            download_label="환불자 목록 예시.xlsx 다운로드",
-            extra_html=(
-                '<p class="mt-2 text-xs text-error flex items-center gap-1">'
-                '<span class="material-symbols-outlined text-sm">privacy_tip</span>'
-                "전화번호·계좌번호 열은 올리지 마세요. 예시 파일도 이름·금액·사유만 포함합니다."
-                "</p>"
+            table_html=_table(
+                ["사물함 번호", "이름", "환불금액", "사유"],
+                [["전자-12", "정예린", "4,000", "당첨등록포기"], ["일반-05", "강민준", "2,000", "두번송금"]],
             ),
+            note="꼭 필요한 열은 이름과 사유이고, 사물함 번호와 환불금액은 있으면 씁니다. 전화번호·계좌번호 열은 넣지 마세요.",
+            download_href="/examples/환불자목록_예시.xlsx",
+            download_label="환불자 목록 예시 파일 받기",
         ),
     }
-
-
-def _table_wrap(inner: str) -> str:
-    return f'<table class="w-full text-xs text-left border-collapse">{inner}</table>'
-
-
-def _ledger_table() -> str:
-    return _table_wrap("""<thead class="bg-surface-container">
-  <tr>
-    <th class="p-2 border-b border-r border-outline-variant font-semibold">날짜</th>
-    <th class="p-2 border-b border-r border-outline-variant font-semibold">사업번호</th>
-    <th class="p-2 border-b border-r border-outline-variant font-semibold">세부번호</th>
-    <th class="p-2 border-b border-r border-outline-variant font-semibold">기재내용</th>
-    <th class="p-2 border-b border-r border-outline-variant font-semibold">구분</th>
-    <th class="p-2 border-b border-r border-outline-variant font-semibold">개요</th>
-    <th class="p-2 border-b border-r border-outline-variant font-semibold">수입</th>
-    <th class="p-2 border-b border-outline-variant font-semibold">지출</th>
-  </tr>
-</thead>
-<tbody>
-  <tr>
-    <td class="p-2 border-b border-r border-outline-variant">2026-03-10</td>
-    <td class="p-2 border-b border-r border-outline-variant">2</td>
-    <td class="p-2 border-b border-r border-outline-variant">1</td>
-    <td class="p-2 border-b border-r border-outline-variant">전자49장문경</td>
-    <td class="p-2 border-b border-r border-outline-variant">지출의환급</td>
-    <td class="p-2 border-b border-r border-outline-variant">대면 사물함 수익금 입금</td>
-    <td class="p-2 border-b border-r border-outline-variant">4,000</td>
-    <td class="p-2 border-b border-outline-variant">0</td>
-  </tr>
-  <tr class="bg-surface-container-low">
-    <td class="p-2 border-r border-outline-variant">2026-03-23</td>
-    <td class="p-2 border-r border-outline-variant">3</td>
-    <td class="p-2 border-r border-outline-variant">1</td>
-    <td class="p-2 border-r border-outline-variant">김지민</td>
-    <td class="p-2 border-r border-outline-variant">지출의환급</td>
-    <td class="p-2 border-r border-outline-variant">물품 대여 연체료</td>
-    <td class="p-2 border-r border-outline-variant">4,000</td>
-    <td class="p-2 border-outline-variant">0</td>
-  </tr>
-</tbody>""") + (
-        '<p class="p-3 text-xs text-on-surface-variant bg-surface-container-low border-t border-outline-variant">'
-        "<strong>헤더 이름으로 열을 찾으므로 열 순서와 다른 열(현금 등)은 상관없습니다.</strong> "
-        "꼭 필요한 열: 날짜·사업번호·기재내용(세목)·수입·지출. 선택: 세부번호·구분·개요·오류여부. "
-        "날짜는 2026-03-10, 2026.3.10, 2026년 3월 10일 모두 읽습니다. "
-        "시트 이름은 자유롭고, 데이터가 있는 시트를 자동으로 읽습니다. "
-        "<strong>구분</strong>은 장부 값을 그대로 수입지출내역서에 옮깁니다. "
-        "읽지 못한 행은 결과 화면의 <strong>입력 파일 확인</strong>에 표시됩니다."
-        "</p>"
-    )
-
-
-def _overdue_table() -> str:
-    return _table_wrap("""<thead class="bg-surface-container">
-  <tr>
-    <th class="p-2 border-b border-r border-outline-variant font-semibold">반납일(입금일)</th>
-    <th class="p-2 border-b border-r border-outline-variant font-semibold">대여물품</th>
-    <th class="p-2 border-b border-r border-outline-variant font-semibold">성명</th>
-    <th class="p-2 border-b border-r border-outline-variant font-semibold">연체료</th>
-    <th class="p-2 border-b border-outline-variant font-semibold">비고</th>
-  </tr>
-</thead>
-<tbody>
-  <tr><td class="p-2 border-b border-r border-outline-variant">2026-03-23</td><td class="p-2 border-b border-r border-outline-variant">보조배터리 1개</td><td class="p-2 border-b border-r border-outline-variant">김지민</td><td class="p-2 border-b border-r border-outline-variant">4,000</td><td class="p-2 border-b border-outline-variant"></td></tr>
-  <tr class="bg-surface-container-low"><td class="p-2 border-b border-r border-outline-variant">2026-03-31</td><td class="p-2 border-b border-r border-outline-variant">폴라로이드 필름</td><td class="p-2 border-b border-r border-outline-variant">하명진</td><td class="p-2 border-b border-r border-outline-variant">7,000</td><td class="p-2 border-b border-outline-variant">필름값</td></tr>
-  <tr><td class="p-2 border-r border-outline-variant">2026-04-01</td><td class="p-2 border-r border-outline-variant">돗자리(대) 1개</td><td class="p-2 border-r border-outline-variant">서윤아</td><td class="p-2 border-r border-outline-variant">9,000</td><td class="p-2 border-outline-variant">조소영'으로 입금</td></tr>
-</tbody>""") + (
-        '<p class="p-3 text-xs text-on-surface-variant bg-surface-container-low border-t border-outline-variant">'
-        "헤더 이름으로 열을 찾습니다. 필요한 열: 대여물품·성명(이름)·연체료. 선택: 반납일·비고."
-        "</p>"
-    )
-
-
-def _refund_table() -> str:
-    return _table_wrap("""<thead class="bg-surface-container">
-  <tr>
-    <th class="p-2 border-b border-r border-outline-variant font-semibold">사물함 번호</th>
-    <th class="p-2 border-b border-r border-outline-variant font-semibold">이름</th>
-    <th class="p-2 border-b border-r border-outline-variant font-semibold">환불금액</th>
-    <th class="p-2 border-b border-outline-variant font-semibold">사유</th>
-  </tr>
-</thead>
-<tbody>
-  <tr><td class="p-2 border-b border-r border-outline-variant">전자-12</td><td class="p-2 border-b border-r border-outline-variant">이지원</td><td class="p-2 border-b border-r border-outline-variant">4,000</td><td class="p-2 border-b border-outline-variant">당첨등록포기</td></tr>
-  <tr class="bg-surface-container-low"><td class="p-2 border-r border-outline-variant">일반-05</td><td class="p-2 border-r border-outline-variant">박민수</td><td class="p-2 border-r border-outline-variant">2,000</td><td class="p-2">두번송금</td></tr>
-</tbody>""") + (
-        '<p class="p-3 text-xs text-on-surface-variant bg-surface-container-low border-t border-outline-variant">'
-        "헤더 이름으로 열을 찾습니다. 필요한 열: 이름(성명)·사유. 선택: 사물함 번호·환불금액."
-        "</p>"
-    )

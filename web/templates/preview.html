@@ -1,186 +1,113 @@
 <!DOCTYPE html>
-<html class="light" lang="ko">
+<html lang="ko">
 <head>
   {% set page_title = "미리보기" %}
   {% include "includes/head.html" %}
-  <style>
-    .pv-table td, .pv-table th { border: 1px solid var(--pv-line, #c4c6cf); padding: 4px 8px; }
-    .pv-edited { box-shadow: inset 3px 0 0 #B45309; }
-    body.only-review .pv-page:not(.pv-needs-check) { display: none; }
-    body.only-review .pv-biz:not(.pv-biz-check) { display: none; }
-  </style>
 </head>
-<body class="bg-background text-on-surface min-h-screen flex flex-col">
+<body>
   {% include "includes/header.html" %}
+  {% from "includes/icons.html" import icon %}
 
-  <main class="flex-grow pt-8 pb-32 px-4 sm:px-6">
-    <form method="post" action="/build/{{ preview_id }}" id="build-form" class="max-w-[960px] mx-auto space-y-8">
-      <nav class="flex justify-between items-center flex-wrap gap-2">
-        <a href="/" class="flex items-center gap-2 text-primary font-label-md hover:underline">
-          <span class="material-symbols-outlined text-[18px]">arrow_back</span>
-          다시 업로드
-        </a>
-        <span class="text-xs text-on-surface-variant">이 미리보기는 약 {{ expires_min }}분 뒤 만료됩니다.</span>
-      </nav>
-
-      <section class="space-y-2">
-        <h2 class="text-display font-display text-on-surface">미리보기</h2>
-        <p class="text-body-lg font-body-lg text-on-surface-variant">
-          문서를 만들기 전에 페이지별 내용을 확인하세요. <strong>구분·내용·비고</strong>는 여기서 바로 고칠 수 있습니다.
-          세목과 금액은 장부 그대로이며, 바꾸려면 엑셀을 고쳐 다시 올려 주세요.
-        </p>
-        {% if message %}<p class="text-body-md text-primary">{{ message }}</p>{% endif %}
-      </section>
-
-      <section class="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <div class="bg-surface-container-lowest border border-outline-variant p-4 rounded-xl">
-          <p class="text-label-md text-on-surface-variant">사업</p>
-          <p class="text-headline-md font-headline-md text-primary">{{ view.businesses|length }}개</p>
-        </div>
-        <div class="bg-surface-container-lowest border border-outline-variant p-4 rounded-xl">
-          <p class="text-label-md text-on-surface-variant">페이지</p>
-          <p class="text-headline-md font-headline-md">{{ view.page_count }}p</p>
-          <p class="text-[11px] text-on-surface-variant">한 페이지 세목 {{ view.rows_per_page }}줄</p>
-        </div>
-        <div class="bg-surface-container-lowest border p-4 rounded-xl {% if view.required_count %}border-error{% else %}border-outline-variant{% endif %}">
-          <p class="text-label-md text-on-surface-variant">꼭 고칠 것</p>
-          <p class="text-headline-md font-headline-md {% if view.required_count %}text-error{% else %}text-primary{% endif %}">{{ view.required_count }}건</p>
-        </div>
-        <div class="bg-surface-container-lowest border p-4 rounded-xl {% if view.auto_count %}border-[#1D4ED8]{% else %}border-outline-variant{% endif %}">
-          <p class="text-label-md text-on-surface-variant">확인할 것</p>
-          <p class="text-headline-md font-headline-md {% if view.auto_count %}text-[#1D4ED8]{% else %}text-primary{% endif %}">{{ view.auto_count }}건</p>
-          <p class="text-[11px] text-on-surface-variant">프로그램이 계산·변환</p>
-        </div>
-        <div class="bg-surface-container-lowest border border-outline-variant p-4 rounded-xl">
-          <p class="text-label-md text-on-surface-variant">참고</p>
-          <p class="text-headline-md font-headline-md text-on-surface-variant">{{ view.advisory_count }}건</p>
-          <p class="text-[11px] text-on-surface-variant">알고만 있으면 됨</p>
-        </div>
-      </section>
-
-      <p class="text-body-md {% if masking_ok %}text-[#166534]{% else %}text-[#92400E]{% endif %} flex items-center gap-2">
-        <span class="material-symbols-outlined text-[18px]">privacy_tip</span>{{ masking_message }}
+  <main class="wrap wrap-wide has-bottombar">
+    <form method="post" action="/build/{{ preview_id }}" id="build-form">
+      <p class="row between small">
+        <a href="/">{{ icon('back') }} 처음 화면으로</a>
+        <span class="muted">이 미리보기는 약 {{ expires_min }}분 뒤 사라집니다.</span>
       </p>
 
-      <p class="text-body-md bg-surface-container-low border border-outline-variant rounded-lg p-3">
-        <strong class="text-error">꼭 고칠 것</strong>: 문서에서 빠졌거나 비어 있거나 틀렸을 수 있는 곳 ·
-        <strong class="text-[#1E40AF]">확인할 것</strong>: 프로그램이 계산하거나 바꿔 적은 곳(연체일수, 대납 연결, 수수료 분리, 쪽 나눔 등) — 맞는지 한 번 보기 ·
-        <strong>참고</strong>: 알고만 있으면 되는 것
-      </p>
+      <h1 class="page-title mt-4">미리보기</h1>
+      <p class="lead">문서를 만들기 전에 쪽마다 내용을 확인하세요. <b>구분, 내용, 비고</b>는 여기서 바로 고칠 수 있습니다. 세목과 금액은 장부 그대로이니, 바꾸려면 엑셀을 고쳐 다시 올려 주세요.</p>
+      {% if message %}<p class="note note-green mt-3">{{ message }}</p>{% endif %}
+
+      <dl class="tally">
+        <div><dt>사업</dt><dd>{{ view.businesses|length }}<small>개</small></dd></div>
+        <div><dt>쪽</dt><dd>{{ view.page_count }}<small>쪽</small></dd><p class="sub">한 쪽에 세목 {{ view.rows_per_page }}줄</p></div>
+        <div><dt>꼭 고칠 것</dt><dd class="{% if view.required_count %}lvl-must{% endif %}">{{ view.required_count }}<small>건</small></dd><p class="sub">빠졌거나 틀렸을 수 있음</p></div>
+        <div><dt>확인할 것</dt><dd class="{% if view.auto_count %}lvl-check{% endif %}">{{ view.auto_count }}<small>건</small></dd><p class="sub">프로그램이 계산함</p></div>
+        <div><dt>참고</dt><dd class="muted">{{ view.advisory_count }}<small>건</small></dd><p class="sub">알고만 있으면 됨</p></div>
+      </dl>
+
+      <p class="mt-3 small muted">{{ masking_message }}</p>
 
       {% if view.input_required or view.input_advisory or view.input_auto %}
-      <section class="space-y-3">
-        <h3 class="text-headline-md font-headline-md">입력 파일 확인</h3>
-        {% if view.input_required %}
-        <p class="text-body-md text-on-surface-variant">빨간 <strong>꼭 고칠 것</strong>이 붙은 엑셀 행은 결과 문서에서 빠져 있습니다. 엑셀을 고친 뒤 다시 올려 주세요.</p>
-        {% endif %}
-        {% for item in view.input_required %}
-        <div class="bg-white border border-error rounded-lg p-3 flex items-start gap-3">
-          <span class="bg-error text-on-error px-2 py-0.5 rounded text-label-md whitespace-nowrap shrink-0">꼭 고칠 것</span>
-          <p class="text-body-md">{{ item }}</p>
-        </div>
-        {% endfor %}
-        {% for item in view.input_auto %}
-        <div class="bg-white border border-[#BFDBFE] rounded-lg p-3 flex items-start gap-3">
-          <span class="bg-[#DBEAFE] text-[#1E40AF] px-2 py-0.5 rounded text-label-md whitespace-nowrap shrink-0">확인할 것</span>
-          <p class="text-body-md">{{ item }}</p>
-        </div>
-        {% endfor %}
-        {% for item in view.input_advisory %}
-        <div class="bg-white border border-outline-variant rounded-lg p-3 flex items-start gap-3">
-          <span class="bg-amber-100 text-amber-800 border border-amber-200 px-2 py-0.5 rounded text-label-md whitespace-nowrap shrink-0">참고</span>
-          <p class="text-body-md text-on-surface-variant">{{ item }}</p>
-        </div>
-        {% endfor %}
-      </section>
+      <h2 class="section-title">입력 파일 확인</h2>
+      {% if view.input_required %}<p class="help">꼭 고칠 것이 붙은 엑셀 행은 결과 문서에서 빠져 있습니다. 엑셀을 고친 뒤 다시 올려 주세요.</p>{% endif %}
+      <div class="panel">
+        {% for item in view.input_required %}<div class="issue"><span class="tag tag-must">꼭 고칠 것</span><span>{{ item }}</span></div>{% endfor %}
+        {% for item in view.input_auto %}<div class="issue"><span class="tag tag-check">확인할 것</span><span>{{ item }}</span></div>{% endfor %}
+        {% for item in view.input_advisory %}<div class="issue"><span class="tag tag-note">참고</span><span class="muted">{{ item }}</span></div>{% endfor %}
+      </div>
       {% endif %}
 
-      <section class="space-y-4">
-        <div class="flex justify-between items-center flex-wrap gap-2">
-          <h3 class="text-headline-md font-headline-md">페이지별 내용</h3>
-          <label class="flex items-center gap-2 text-body-md cursor-pointer select-none">
-            <input type="checkbox" id="only-review" class="rounded">
-            꼭 고칠 것·확인할 것이 있는 쪽만 보기
-          </label>
+      <div class="row between" style="margin-top:36px">
+        <h2 class="section-title" style="margin-top:0">쪽별 내용</h2>
+        <label class="row small" style="gap:6px;cursor:pointer">
+          <input type="checkbox" id="only-review"> 꼭 고칠 것·확인할 것이 있는 쪽만 보기
+        </label>
+      </div>
+
+      {% for biz in view.businesses %}
+      <details class="biz {% if biz.review_count or biz.auto_count %}pv-biz-check{% endif %}" {% if biz.review_count or view.page_count <= 6 %}open{% endif %}>
+        <summary>
+          <span class="biz-name">{{ biz.business_no }}. {{ biz.name or "(사업명 없음)" }}</span>
+          <span class="row" style="gap:6px">
+            <span class="tag tag-note">{{ biz.pages|length }}쪽</span>
+            {% if biz.review_count %}<span class="tag tag-must">꼭 고칠 것 {{ biz.review_count }}</span>{% endif %}
+            {% if biz.auto_count %}<span class="tag tag-check">확인할 것 {{ biz.auto_count }}</span>{% endif %}
+          </span>
+        </summary>
+        <div class="biz-pages">
+          {% for page in biz.pages %}
+          <article class="pg pv-page {% if page.needs_review %}pv-needs-review{% elif page.auto %}pg-check{% endif %} {% if page.needs_check %}pv-needs-check{% endif %}"
+                   id="p-{{ page.business_no }}-{{ page.index }}">
+            <header class="pg-head">
+              <span><b>{{ page.index }}쪽</b> <span class="muted">사업번호</span> <b>{{ page.label }}</b> <span class="muted nowrap">{{ page.date or "(날짜 없음)" }}</span> <span class="muted">{{ page.income_expense }}</span></span>
+              <span class="nowrap">총액 <b>{{ page.total }}</b>원</span>
+            </header>
+
+            {% if page.required or page.auto or page.advisory %}
+            <div class="pg-issues">
+              {% for r in page.required %}<p class="pg-issue lvl-must"><span class="tag tag-must">꼭 고칠 것</span><span>{{ r }}</span></p>{% endfor %}
+              {% for a in page.auto %}<p class="pg-issue lvl-check"><span class="tag tag-check">확인할 것</span><span>{{ a }}</span></p>{% endfor %}
+              {% for a in page.advisory %}<p class="pg-issue muted"><span class="tag tag-note">참고</span><span>{{ a }}</span></p>{% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="pg-fields">
+              <label class="label">구분
+                <input name="{{ page.name('class') }}" value="{{ page.values['class'] }}" data-original="{{ page.originals['class'] }}"
+                  class="field pv-input {% if 'class' in page.edited %}pv-edited{% endif %}"></label>
+              <label class="label">내용
+                <input name="{{ page.name('content') }}" value="{{ page.values['content'] }}" data-original="{{ page.originals['content'] }}"
+                  class="field pv-input {% if 'content' in page.edited %}pv-edited{% endif %}"></label>
+            </div>
+
+            <table class="items">
+              <thead><tr><th>세목</th><th class="qty">수량</th><th class="num">단가</th></tr></thead>
+              <tbody>
+                {% for semok, qty, price in page.rows %}
+                <tr><td>{{ semok }}</td><td class="qty">{{ qty }}</td><td class="num">{{ price }}</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+
+            <label class="label mt-3">비고 <span class="opt">줄바꿈도 그대로 들어갑니다</span>
+              <textarea name="{{ page.name('remark') }}" rows="{{ [2, page.values['remark'].count('\n') + 2]|max }}" data-original="{{ page.originals['remark'] }}"
+                class="field pv-input {% if 'remark' in page.edited %}pv-edited{% endif %}">{{ page.values['remark'] }}</textarea></label>
+            <button type="button" class="pv-reset linkbtn small mt-2 {% if not page.edited %}hidden{% endif %}">이 쪽 원래대로</button>
+          </article>
+          {% endfor %}
         </div>
-
-        {% for biz in view.businesses %}
-        <details class="pv-biz bg-surface-container-lowest border border-outline-variant rounded-xl {% if biz.review_count or biz.auto_count %}pv-biz-check{% endif %}"
-                 {% if biz.review_count or view.page_count <= 6 %}open{% endif %}>
-          <summary class="cursor-pointer list-none p-4 flex justify-between items-center gap-2 flex-wrap">
-            <span class="text-headline-md font-headline-md">{{ biz.business_no }}. {{ biz.name or "(사업명 없음)" }}</span>
-            <span class="flex gap-2 text-xs">
-              <span class="px-2 py-0.5 rounded-full bg-surface-container-high">{{ biz.pages|length }}쪽</span>
-              {% if biz.review_count %}<span class="px-2 py-0.5 rounded-full bg-error-container text-on-error-container">꼭 고칠 것 {{ biz.review_count }}</span>{% endif %}
-              {% if biz.auto_count %}<span class="px-2 py-0.5 rounded-full bg-[#DBEAFE] text-[#1E40AF]">확인할 것 {{ biz.auto_count }}</span>{% endif %}
-            </span>
-          </summary>
-          <div class="px-4 pb-4 space-y-5">
-            {% for page in biz.pages %}
-            <article class="pv-page border rounded-lg p-4 space-y-3 bg-white {% if page.needs_review %}pv-needs-review border-error{% elif page.auto %}border-[#93C5FD]{% else %}border-outline-variant{% endif %} {% if page.needs_check %}pv-needs-check{% endif %}"
-                     id="p-{{ page.business_no }}-{{ page.index }}">
-              <header class="flex justify-between items-start gap-2 flex-wrap">
-                <p class="text-label-md font-label-md">
-                  {{ page.index }}쪽 · 사업번호 <strong>{{ page.label }}</strong> · {{ page.date or "(날짜 없음)" }} · {{ page.income_expense }}
-                </p>
-                <p class="text-label-md">총액 <strong>{{ page.total }}</strong>원</p>
-              </header>
-
-              {% for r in page.required %}
-              <p class="text-body-md text-error flex items-start gap-2"><span class="material-symbols-outlined text-[18px]">priority_high</span>{{ r }}</p>
-              {% endfor %}
-              {% for a in page.auto %}
-              <p class="text-xs text-[#1E40AF] flex items-start gap-2"><span class="shrink-0 px-1.5 rounded bg-[#DBEAFE]">확인할 것</span>{{ a }}</p>
-              {% endfor %}
-              {% for a in page.advisory %}
-              <p class="text-xs text-amber-800 flex items-start gap-2"><span class="material-symbols-outlined text-[16px]">info</span>{{ a }}</p>
-              {% endfor %}
-
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <label class="block">
-                  <span class="text-xs text-on-surface-variant">구분</span>
-                  <input name="{{ page.name('class') }}" value="{{ page.values['class'] }}" data-original="{{ page.originals['class'] }}"
-                    class="pv-input mt-1 w-full p-2 border border-outline-variant rounded text-body-md {% if 'class' in page.edited %}pv-edited{% endif %}">
-                </label>
-                <label class="block sm:col-span-2">
-                  <span class="text-xs text-on-surface-variant">내용</span>
-                  <input name="{{ page.name('content') }}" value="{{ page.values['content'] }}" data-original="{{ page.originals['content'] }}"
-                    class="pv-input mt-1 w-full p-2 border border-outline-variant rounded text-body-md {% if 'content' in page.edited %}pv-edited{% endif %}">
-                </label>
-              </div>
-
-              <div class="overflow-x-auto">
-                <table class="pv-table w-full text-body-md border-collapse">
-                  <thead class="bg-surface-container"><tr><th class="text-left">세목</th><th class="w-16">수량</th><th class="w-32 text-right">단가</th></tr></thead>
-                  <tbody>
-                    {% for semok, qty, price in page.rows %}
-                    <tr><td>{{ semok }}</td><td class="text-center">{{ qty }}</td><td class="text-right">{{ price }}</td></tr>
-                    {% endfor %}
-                  </tbody>
-                </table>
-              </div>
-
-              <label class="block">
-                <span class="text-xs text-on-surface-variant">비고 (줄바꿈 그대로 들어갑니다)</span>
-                <textarea name="{{ page.name('remark') }}" rows="{{ [2, page.values['remark'].count('\n') + 2]|max }}" data-original="{{ page.originals['remark'] }}"
-                  class="pv-input mt-1 w-full p-2 border border-outline-variant rounded text-body-md leading-relaxed {% if 'remark' in page.edited %}pv-edited{% endif %}">{{ page.values['remark'] }}</textarea>
-              </label>
-              <button type="button" class="pv-reset text-xs text-primary hover:underline {% if not page.edited %}hidden{% endif %}">이 페이지 원래대로</button>
-            </article>
-            {% endfor %}
-          </div>
-        </details>
-        {% endfor %}
-      </section>
+      </details>
+      {% endfor %}
     </form>
   </main>
 
-  <div class="fixed bottom-0 inset-x-0 bg-surface-container-lowest border-t border-outline-variant px-4 py-3">
-    <div class="max-w-[960px] mx-auto flex justify-between items-center gap-3 flex-wrap">
-      <p class="text-body-md text-on-surface-variant">고친 칸 <strong id="edit-count">{{ view.edit_count }}</strong>개 · 고친 내용은 검수목록 '참고'에 남습니다.</p>
-      <button type="submit" form="build-form" id="build-btn"
-        class="px-8 py-3 bg-primary text-on-primary rounded-full text-headline-md font-headline-md flex items-center gap-2 hover:bg-on-primary-fixed-variant">
-        <span class="material-symbols-outlined">description</span>
+  <div class="bottombar">
+    <div class="bottombar-inner">
+      <p class="small muted">고친 칸 <b id="edit-count">{{ view.edit_count }}</b>개. 고친 내용은 검수목록 '참고'에 남습니다.</p>
+      <button type="submit" form="build-form" id="build-btn" class="btn btn-primary">
+        <span id="build-icon" class="hidden">{{ icon('spin', 'spin') }}</span>
         <span id="build-label">이대로 문서 만들기</span>
       </button>
     </div>
@@ -210,18 +137,14 @@
     document.getElementById('only-review').addEventListener('change', (e) => {
       document.body.classList.toggle('only-review', e.target.checked);
     });
-    document.getElementById('build-form').addEventListener('submit', () => {
+    function setBusy(busy) {
       const btn = document.getElementById('build-btn');
-      btn.disabled = true;
-      btn.classList.add('opacity-80', 'cursor-wait');
-      document.getElementById('build-label').textContent = '문서 만드는 중…';
-    });
-    window.addEventListener('pageshow', () => {
-      const btn = document.getElementById('build-btn');
-      btn.disabled = false;
-      btn.classList.remove('opacity-80', 'cursor-wait');
-      document.getElementById('build-label').textContent = '이대로 문서 만들기';
-    });
+      btn.disabled = busy;
+      document.getElementById('build-icon').classList.toggle('hidden', !busy);
+      document.getElementById('build-label').textContent = busy ? '문서 만드는 중…' : '이대로 문서 만들기';
+    }
+    document.getElementById('build-form').addEventListener('submit', () => setBusy(true));
+    window.addEventListener('pageshow', () => setBusy(false));
   </script>
 </body>
 </html>

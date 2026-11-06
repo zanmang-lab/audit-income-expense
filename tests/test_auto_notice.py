@@ -344,5 +344,5 @@ def test_rules_panel_hidden_unless_admin():
     from fastapi.testclient import TestClient
     from web.app import app
     c = TestClient(app)
-    assert 'group hidden" id="rules-info"' in c.get("/").text
-    assert 'group" id="rules-info"' in c.get("/?admin").text
+    assert 'fold hidden" id="rules-info"' in c.get("/").text
+    assert 'class="fold" id="rules-info"' in c.get("/?admin").text
