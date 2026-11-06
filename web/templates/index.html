@@ -140,24 +140,52 @@
       </div>
 
       <details class="fold" id="basic-info">
-        <summary><span>기타 문구 <span class="opt">대여비·필름 가격·안내문이 바뀐 학기에만</span></span><span class="chev">{{ icon('chev') }}</span></summary>
+        <summary><span>비고 문장·기타 문구 <span class="opt">바뀐 학기에만</span></span><span class="chev">{{ icon('chev') }}</span></summary>
         <div class="fold-body">
-          <label class="label">사물함 비고 첫 줄
+          <p class="help">비고에 들어가는 문장과 금액입니다. 고치면 바로 아래 예시가 바뀌니, 예시를 보며 고치세요. 처음 쓰는 학기라면 그대로 두면 됩니다.</p>
+
+          <h3 class="sub-title">사물함</h3>
+          <label class="label mt-2">비고 첫 줄 <span class="opt">대여비가 바뀐 학기에만</span>
             <textarea name="locker_deposit_remark" data-remember rows="2" class="field">{{ default_locker_remark }}</textarea></label>
-          <p class="help">사물함 사업 입금·환불 쪽 비고의 첫 줄입니다.</p>
+          <div class="tpl" data-tpl="환불" data-label="환불 문장"></div>
+          <p class="label mt-4">환불 사유 바꿔 적기</p>
+          <p class="help">환불자 목록의 사유 칸에 적힌 말을 비고에 쓸 말로 바꿉니다. 목록에 없는 사유는 그대로 씁니다.</p>
+          <table class="rules-table" id="reason-table">
+            <thead><tr><th>환불자 목록에 적힌 말</th><th>비고에 쓸 말</th><th class="col-del"></th></tr></thead>
+            <tbody id="reason-rows"></tbody>
+          </table>
+          <button type="button" id="reason-add-btn" class="linkbtn mt-2">줄 추가</button>
+
+          <h3 class="sub-title">물품 대여</h3>
+          <div class="tpl" data-tpl="대상" data-label="이름 부분"></div>
+          <div class="tpl" data-tpl="대상_대납" data-label="이름 부분 (다른 사람이 대신 냈을 때)"></div>
+          <div class="tpl" data-tpl="연체" data-label="연체"></div>
+          <div class="tpl" data-tpl="연체_일수불명" data-label="연체 (일수를 못 정했을 때)"></div>
+          <div class="tpl" data-tpl="필름값" data-label="필름값"></div>
+          <div class="tpl" data-tpl="손망실비" data-label="손망실비"></div>
+          <div class="tpl" data-tpl="감면" data-label="감면"></div>
+          <div class="tpl" data-tpl="감면_일수불명" data-label="감면 (일수를 못 정했을 때)"></div>
+          <label class="label mt-4">늘 확인할 물품 <span class="opt">쉼표로 구분</span>
+            <input id="watch-items" class="field" placeholder="예: 삼각대, 돗자리, 보드게임"></label>
+          <p class="help">규정 단가와 실제로 받은 금액이 자주 다른 물품입니다. 연체일수를 계산해도 검수목록 '확인할 것'에 올립니다.</p>
           <label class="label mt-4">폴라로이드 필름 1장 가격(원)
             <input name="film_fee_per_sheet" data-remember inputmode="numeric" value="{{ default_film_fee }}" class="field" style="max-width:180px"></label>
           <p class="help">필름값 ÷ 이 가격 = 필름 장수</p>
-          <label class="label mt-4">물품 대여 증빙 이미지
+          <label class="label mt-4">증빙서류 칸 그림
             <input type="file" name="rental_evidence" accept=".png,.jpg,.jpeg,image/png,image/jpeg" class="field"></label>
           <p class="help">물품 대여 사업 수입 쪽 증빙서류 칸에 들어갈 그림입니다. 비워 두면 기본 그림(제39대 물품 대여 사업 안내사항)이 들어갑니다.</p>
+
+          <p class="row between mt-6">
+            <span id="friendly-status" class="small muted" role="status"></span>
+            <button type="button" id="friendly-reset-btn" class="linkbtn linkbtn-muted">비고 문장을 기본값으로 되돌리기</button>
+          </p>
         </div>
       </details>
 
       <details class="fold{% if not admin %} hidden{% endif %}" id="rules-info">
-        <summary><span>비고 문장 규칙 <span class="opt">관리자용</span></span><span class="chev">{{ icon('chev') }}</span></summary>
+        <summary><span>비고 규칙 원문(JSON) <span class="opt">관리자용</span></span><span class="chev">{{ icon('chev') }}</span></summary>
         <div class="fold-body">
-          <p class="help">비고 문장의 말투, 환불 사유 표현 등입니다. 문장을 바꿔야 할 때만 고치고, 문장 틀의 <code>{중괄호}</code> 칸은 그대로 두세요.</p>
+          <p class="help">위 '비고 문장·기타 문구'에서 고친 내용이 여기에 함께 반영됩니다. 사업 종류 키워드처럼 화면에 없는 항목만 여기서 고치세요.</p>
           <textarea id="rules_json" name="rules_json" spellcheck="false" class="field field-mono mt-2" style="min-height:300px">{{ default_rules_json }}</textarea>
           <div class="row between mt-2">
             <p id="rules-status" class="small muted" role="status"></p>
@@ -349,7 +377,114 @@
       }
     }
     byName('rules_json').addEventListener('input', validateRules);
-    document.getElementById('rules-reset-btn').addEventListener('click', () => { byName('rules_json').value = DEFAULT_RULES_TEXT; validateRules(); });
+    document.getElementById('rules-reset-btn').addEventListener('click', () => { byName('rules_json').value = DEFAULT_RULES_TEXT; validateRules(); if (typeof loadFriendly === 'function') loadFriendly(); });
+
+    // ── 비고 문장 쉬운 편집 (rules_json과 서로 맞춤) ──
+    const TEMPLATE_FIELDS = {{ template_fields | tojson }};
+    const SAMPLE = { 대여자: '홍길동', 입금자: '김철수', 조사: '으로', 물품: '우산 1개', 일수: '2', 금액: '4,000', 장수: '3', 이름: '홍길동', 사유: '당첨 등록 포기' };
+    const FIELD_HELP = { 대상: '이름 부분', 대여자: '빌린 사람', 입금자: '대신 낸 사람', 조사: '으로/로', 물품: '물품', 일수: '연체일수', 금액: '금액', 장수: '필름 장수', 이름: '이름', 사유: '환불 사유' };
+    const DEFAULT_RULES = JSON.parse(DEFAULT_RULES_TEXT);
+    function currentRules() {
+      try { const v = JSON.parse(byName('rules_json').value || '{}'); if (v && typeof v === 'object' && !Array.isArray(v)) return v; } catch (e) {}
+      return null;
+    }
+    const fill = (tpl, values) => String(tpl || '').replace(/\{([^{}]+)\}/g, (m, k) => (k in values ? values[k] : m));
+    function tplValue(name) { const el = document.querySelector(`.tpl[data-tpl="${name}"] textarea`); return el ? el.value : ''; }
+    function sampleText(name) {
+      const t = tplValue(name);
+      if (name === '대상' || name === '대상_대납' || name === '환불') return fill(t, SAMPLE);
+      return fill(t, { ...SAMPLE, 대상: fill(tplValue('대상'), SAMPLE) });
+    }
+    function badFields(name) {
+      const allowed = TEMPLATE_FIELDS[name] || [];
+      return [...tplValue(name).matchAll(/\{([^{}]*)\}/g)].map(m => m[1]).filter(k => !allowed.includes(k));
+    }
+    document.querySelectorAll('.tpl').forEach(box => {
+      const name = box.dataset.tpl;
+      const chips = (TEMPLATE_FIELDS[name] || []).map(f => `<button type="button" class="chip-btn" data-ins="${f}" title="${FIELD_HELP[f] || f} 자리 넣기">{${f}}</button>`).join('');
+      box.innerHTML = `<p class="label mt-4">${box.dataset.label}</p>
+        <textarea class="field tpl-text" rows="2"></textarea>
+        <p class="tpl-chips">누르면 들어가는 자리: ${chips}</p>
+        <p class="tpl-example"><span class="muted">예시</span> <span class="tpl-out"></span></p>
+        <p class="tpl-error hidden"></p>`;
+      const ta = box.querySelector('textarea');
+      box.querySelectorAll('.chip-btn').forEach(b => b.addEventListener('click', () => {
+        const at = ta.selectionStart ?? ta.value.length, ins = `{${b.dataset.ins}}`;
+        ta.value = ta.value.slice(0, at) + ins + ta.value.slice(ta.selectionEnd ?? at);
+        ta.focus(); ta.selectionStart = ta.selectionEnd = at + ins.length;
+        friendlyChanged();
+      }));
+      ta.addEventListener('input', friendlyChanged);
+    });
+    function renderExamples() {
+      let ok = true;
+      document.querySelectorAll('.tpl').forEach(box => {
+        const name = box.dataset.tpl, bad = badFields(name), err = box.querySelector('.tpl-error');
+        box.querySelector('.tpl-out').textContent = sampleText(name);
+        if (!tplValue(name).trim()) {
+          ok = false;
+          err.textContent = '문장을 비워 둘 수 없습니다. 기본값으로 되돌리려면 맨 아래 단추를 누르세요.';
+          err.classList.remove('hidden');
+        } else if (bad.length) {
+          ok = false;
+          err.textContent = `쓸 수 없는 자리: ${bad.map(b => '{' + b + '}').join(', ')}. 위의 자리 단추로 넣은 것만 쓸 수 있습니다.`;
+          err.classList.remove('hidden');
+        } else err.classList.add('hidden');
+      });
+      return ok;
+    }
+    function addReasonRow(from = '', to = '') {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td><input class="field r-from" placeholder="예: 중복입금"></td><td><input class="field r-to" placeholder="예: 두 번 송금"></td>
+        <td><button type="button" class="linkbtn linkbtn-muted" aria-label="이 줄 지우기" style="text-decoration:none;padding-top:10px">✕</button></td>`;
+      tr.querySelector('.r-from').value = from; tr.querySelector('.r-to').value = to;
+      tr.querySelector('button').onclick = () => { tr.remove(); friendlyChanged(); };
+      tr.querySelectorAll('input').forEach(i => i.addEventListener('input', friendlyChanged));
+      document.getElementById('reason-rows').appendChild(tr);
+    }
+    document.getElementById('reason-add-btn').onclick = () => addReasonRow();
+    document.getElementById('watch-items').addEventListener('input', friendlyChanged);
+    let loadingFriendly = false;
+    function loadFriendly() {
+      const r = currentRules() || DEFAULT_RULES;
+      const merged = { ...DEFAULT_RULES, ...r, 비고문장: { ...DEFAULT_RULES.비고문장, ...(r.비고문장 || {}) } };
+      loadingFriendly = true;
+      document.querySelectorAll('.tpl').forEach(box => { box.querySelector('textarea').value = merged.비고문장[box.dataset.tpl] || ''; });
+      document.getElementById('reason-rows').innerHTML = '';
+      Object.entries(merged.환불사유_표현 || {}).forEach(([k, v]) => addReasonRow(k, v));
+      document.getElementById('watch-items').value = (merged.연체료_항상검수_물품 || []).join(', ');
+      loadingFriendly = false;
+      renderExamples();
+      friendlyStatus();
+    }
+    function friendlyChanged() {
+      if (loadingFriendly) return;
+      const ok = renderExamples();
+      const r = currentRules() || JSON.parse(DEFAULT_RULES_TEXT);
+      r.비고문장 = { ...(r.비고문장 || {}) };
+      document.querySelectorAll('.tpl').forEach(box => { r.비고문장[box.dataset.tpl] = box.querySelector('textarea').value.trim(); });
+      r.비고문장.연체_검수 = r.비고문장.연체;  // 일수를 계산했지만 확인이 필요한 경우도 같은 문장
+      const reasons = {};
+      document.querySelectorAll('#reason-rows tr').forEach(tr => {
+        const f = tr.querySelector('.r-from').value.trim(), t = tr.querySelector('.r-to').value.trim();
+        if (f && t) reasons[f] = t;
+      });
+      r.환불사유_표현 = reasons;
+      r.연체료_항상검수_물품 = document.getElementById('watch-items').value.split(/[,，]/).map(x => x.trim()).filter(Boolean);
+      byName('rules_json').value = JSON.stringify(r, null, 2);
+      validateRules();
+      friendlyStatus();
+      return ok;
+    }
+    function friendlyStatus() {
+      const r = currentRules();
+      const same = r && JSON.stringify(r) === JSON.stringify(DEFAULT_RULES);
+      document.getElementById('friendly-status').textContent = same ? '기본 문장을 씁니다.' : '바꾼 문장을 씁니다.';
+    }
+    document.getElementById('friendly-reset-btn').addEventListener('click', () => {
+      byName('rules_json').value = DEFAULT_RULES_TEXT; validateRules(); loadFriendly();
+    });
+    byName('rules_json').addEventListener('change', () => { if (validateRules()) loadFriendly(); });
 
     // ── 설정 파일 ──
     const settingsStatus = document.getElementById('settings-status');
@@ -371,6 +506,7 @@
       if (data.연체료규정) { loadRulesText(data.연체료규정); n++; }
       if (data.비고규칙) byName('rules_json').value = JSON.stringify(data.비고규칙, null, 2);
       validateRules();
+      loadFriendly();
       checkTerm();
       return n;
     }
@@ -412,6 +548,7 @@
     if (!restoredSemester) updateSemester();
     loadRulesText(rulesText.value);
     validateRules();
+    loadFriendly();
     checkTerm();
 
     // ── 제출: 화면을 떠나지 않고 보낸다. 오류가 나도 올린 파일이 그대로 남는다 ──
@@ -454,13 +591,14 @@
       let problem = '';
       if (!semInput.value) problem = '① 학기(연도·학기)를 골라 주세요.';
       else if (!overview.value.trim()) problem = '② 사업개요를 적어 주세요.';
-      else if (!validateRules()) problem = '관리자용 비고 문장 규칙의 형식이 잘못되었습니다.';
+      else if (!renderExamples()) { problem = "'비고 문장'에 쓸 수 없는 자리가 있습니다. 빨간 안내를 확인해 주세요."; document.getElementById('basic-info').open = true; }
+      else if (!validateRules()) problem = '관리자용 비고 규칙 원문의 형식이 잘못되었습니다.';
       else if (!rulesText.value.trim()) problem = '③ 연체료 규정에 1일 단가를 하나 이상 적어 주세요.';
       else problem = checkFiles();
       if (problem) {
         hint.textContent = problem;
         hint.classList.remove('hidden');
-        if (problem.includes('비고 문장')) document.getElementById('rules-info').open = true;
+        if (problem.includes('원문')) document.getElementById('rules-info').open = true;
         return;
       }
       hint.classList.add('hidden');

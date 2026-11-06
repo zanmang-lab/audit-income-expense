@@ -374,3 +374,12 @@ def test_name_and_semester_are_not_remembered_or_saved():
                        locker_deposit_remark="", film_fee_per_sheet=1000, business_overview="", overdue_rules_text="",
                        rules=build_rules())
     assert "성명" not in s["기본정보"]["작성자"] and "연락처" not in s["기본정보"]["작성자"]
+
+
+def test_friendly_remark_editor_on_first_page():
+    from fastapi.testclient import TestClient
+    from web.app import app
+    html = TestClient(app).get("/").text
+    for name in ("환불", "대상", "대상_대납", "연체", "필름값", "손망실비", "감면"):
+        assert f'data-tpl="{name}"' in html
+    assert 'id="reason-rows"' in html and 'id="watch-items"' in html
