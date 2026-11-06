@@ -39,19 +39,20 @@
     <form action="/generate" method="post" enctype="multipart/form-data" class="space-y-8" id="upload-form">
       {% from "includes/macros.html" import file_zone, file_zone_compact %}
 
-      <!-- 설정 파일 (인계받은 경우만) -->
+      <!-- 지난 학기 결과 불러오기 (선택) -->
       <div class="border border-dashed border-outline-variant px-4 py-3 rounded-xl text-body-md text-on-surface-variant">
         <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span>지난 학기 결과 zip을 받았다면 그 안의 <code>설정.json</code>을</span>
-          <button type="button" id="settings-load-btn" class="text-primary font-semibold underline">불러오기</button>
-          <span class="where">— 지난 학기에 고친 사업개요·연체료 규정·문구가 그대로 채워집니다. (선택)</span>
+          <span><b>지난 학기에 이 프로그램으로 만든 결과 zip</b>이 있으면</span>
+          <button type="button" id="settings-load-btn" class="text-primary font-semibold underline">그 zip 올리기</button>
+          <span class="where">(선택 · 압축을 풀지 말고 그대로)</span>
         </div>
-        <div class="mt-1 flex flex-wrap gap-x-4 where">
-          <button type="button" id="example-btn" class="underline">기본값으로 되돌리기</button>
-          <button type="button" id="settings-save-btn" class="underline">현재 입력을 설정 파일로 따로 저장</button>
-          <span>설정 파일은 결과 zip에 자동으로 들어갑니다.</span>
-        </div>
-        <input type="file" id="settings-file" accept=".json,application/json" class="hidden">
+        <p class="where mt-1">
+          아래 칸(책임자 소속·직위·성명, 사업개요, 연체료 규정, 기타 문구)이 지난 학기 값으로 채워집니다. 학기는 채우지 않습니다.
+          채운 다음에는 <b>화면에 보이는 값</b>으로 문서를 만듭니다. 이번 학기에 바뀐 것만 칸에서 고치세요.
+          없으면 그냥 아래 칸에 적으면 됩니다.
+        </p>
+        <div class="mt-1 where"><button type="button" id="example-btn" class="underline">입력칸을 기본값으로 되돌리기</button></div>
+        <input type="file" id="settings-file" accept=".zip,.json,application/zip,application/json" class="hidden">
         <p id="settings-status" class="mt-2 text-body-md hidden" role="status"></p>
       </div>
 
@@ -108,10 +109,11 @@
           <button type="button" id="term-fix-btn" class="ml-2 underline font-semibold"></button>
         </div>
         <details class="mt-3">
-          <summary class="where cursor-pointer text-primary">사업 종류(사물함·대여)는 어떻게 정해지나요?</summary>
+          <summary class="where cursor-pointer text-primary">비고는 어느 사업에 미리 채워지나요?</summary>
           <p class="where mt-2">
-            사업명에 <code>사물함</code>이 있으면 사물함 사업(대여비 문구·환불 사유 비고), <code>대여</code>가 있으면 물품 대여 사업(연체료 비고), 0번과 <code>총학</code>·<code>학생회비</code>는 학생회비로 봅니다.
-            이름에 그 말이 없는데 종류를 정해야 하면 줄 끝에 <code>[사물함]</code> · <code>[대여]</code> · <code>[학생회비]</code> · <code>[일반]</code>을 붙이세요. 예: <code>5. 도서관 좌석 관리 [사물함]</code>
+            사업명에 <code>사물함 배부</code>가 있으면 사물함 사업(대여비 문구·환불 사유), <code>물품 대여</code>가 있으면 물품 대여 사업(연체료 문장·증빙 사진)으로 보고 비고를 미리 채웁니다.
+            나머지 사업은 비고를 비워 둡니다(검수하면서 직접 적음). 어느 사업에 채웠는지는 검수목록 '참고'에 나옵니다.
+            이 두 사업의 이름을 다르게 적어야 하면 줄 끝에 <code>[사물함]</code> 또는 <code>[대여]</code>를 붙이세요.
           </p>
         </details>
       </div>
@@ -197,7 +199,7 @@
       </details>
 
       <!-- 관리자용 -->
-      <details class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl group" id="rules-info">
+      <details class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl group{% if not admin %} hidden{% endif %}" id="rules-info">
         <summary class="cursor-pointer list-none flex justify-between items-center gap-2 select-none">
           <span class="text-headline-md font-headline-md text-on-surface-variant">비고 문장 규칙 <span class="chip chip-opt">관리자용 · 고칠 필요 없음</span></span>
           <span class="material-symbols-outlined text-on-surface-variant transition-transform group-open:rotate-180">expand_more</span>
@@ -206,7 +208,7 @@
           비고 문장의 말투, 환불 사유 표현 등입니다. 평소에는 열지 않아도 됩니다.
           문장을 바꿔야 할 때만 고치고, 문장 틀의 <code>{중괄호}</code> 칸은 그대로 두세요.
         </p>
-        <textarea id="rules_json" name="rules_json" data-remember spellcheck="false"
+        <textarea id="rules_json" name="rules_json" spellcheck="false"
           class="field mt-3 font-mono text-xs leading-relaxed" style="min-height:300px">{{ default_rules_json }}</textarea>
         <div class="mt-2 flex justify-between items-start gap-3 flex-wrap">
           <p id="rules-status" class="text-xs text-on-surface-variant" role="status"></p>
@@ -403,12 +405,11 @@
       const b = data.기본정보 || {}, a = b.작성자 || {};
       let n = 0;
       const put = (name, v) => { if (v !== undefined && v !== null && String(v) !== '') { byName(name).value = String(v); n++; } };
-      if (b.학기명 && setSemester(b.학기명)) n++;
       put('author_affiliation', a.소속); put('author_position', a.직위); put('author_name', a.성명);
       put('locker_deposit_remark', b.사물함비고문구); put('film_fee_per_sheet', b.필름1장가격);
       put('business_overview', data.사업개요);
       if (data.연체료규정) { loadRulesText(data.연체료규정); n++; }
-      if (data.비고규칙) { byName('rules_json').value = JSON.stringify(data.비고규칙, null, 2); n++; }
+      if (data.비고규칙) byName('rules_json').value = JSON.stringify(data.비고규칙, null, 2);
       validateRules();
       checkTerm();
       return n;
@@ -425,39 +426,15 @@
       const file = e.target.files[0];
       if (!file) return;
       try {
-        const n = applySettings(JSON.parse(await file.text()));
-        showStatus(`'${file.name}'에서 ${n}개 항목을 채웠습니다. ① 학기를 이번 학기로 골라 주세요.`, false);
+        const fd = new FormData(); fd.append('file', file);
+        const r = await fetch('/settings/from-file', { method: 'POST', body: fd });
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.detail || '읽지 못했습니다');
+        const n = applySettings(data);
+        const extra = data.비고규칙_바뀜 ? ' (지난 학기에 바꾼 비고 문장도 그대로 씁니다)' : '';
+        showStatus(`'${file.name}'에서 ${n}개 칸을 채웠습니다${extra}. ① 학기를 고르고, 이번 학기에 바뀐 것만 고쳐 주세요.`, false);
       } catch (err) { showStatus('설정 파일을 읽지 못했습니다: ' + err.message, true); }
       e.target.value = '';
-    });
-    document.getElementById('settings-save-btn').addEventListener('click', () => {
-      let rules = {};
-      try { rules = JSON.parse(byName('rules_json').value || '{}'); }
-      catch (err) { showStatus('비고 문장 규칙(관리자용)의 형식이 잘못되어 저장하지 못했습니다.', true); return; }
-      syncRules();
-      const label = semInput.value;
-      const data = {
-        _설명: "수입지출내역서 자동 작성 설정 파일입니다. 직접 고치지 말고, 웹 첫 화면의 '지난 설정 파일 불러오기'로 올린 뒤 화면에서 고치세요.",
-        설정버전: 1,
-        기본정보: {
-          학기명: label,
-          작성자: { 성명: byName('author_name').value.trim(), 직위: byName('author_position').value.trim(), 소속: byName('author_affiliation').value.trim() },
-          사물함비고문구: byName('locker_deposit_remark').value.trim(),
-          필름1장가격: byName('film_fee_per_sheet').value.trim(),
-        },
-        사업개요: overview.value.trim(),
-        연체료규정: rulesText.value.trim(),
-        비고규칙: rules,
-      };
-      const blob = new Blob([JSON.stringify(data, null, 2) + '\n'], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `수입지출_설정_${label}.json`;
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
-      showStatus(`'수입지출_설정_${label}.json'으로 저장했습니다. 연락처는 개인정보라 넣지 않았습니다.`, false);
     });
 
     // ── 이 브라우저에 기억 (연락처 제외) ──

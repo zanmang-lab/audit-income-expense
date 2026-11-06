@@ -291,7 +291,7 @@ def test_tripod_mat_boardgame_always_reviewed():
 
 
 def test_default_overview_marks_library_locker_as_general():
-    # '9. 중앙도서관 사물함 관리 운영'은 이름에 '사물함'이 있지만 대여비 사업이 아니라 일반 사업.
+    # '9. 중앙도서관 사물함 관리 운영'은 이름에 '사물함'이 있지만 '사물함 배부'가 아니라 일반 사업(꼬리표 없이).
     from web.semester_inputs import EXAMPLE_OVERVIEW, build_semester_from_overview
     sem = build_semester_from_overview(EXAMPLE_OVERVIEW, RULES)
     assert sem.role_for(9) == "general" and sem.name_for(9) == "중앙도서관 사물함 관리 운영"
@@ -304,3 +304,45 @@ def test_hwp_template_gets_save_as_message(tmp_path):
     with pytest.raises(ValueError) as exc:
         resolve_template(b"\xd0\xcf\x11\xe0" + b"\0" * 50, "양식.hwp", tmp_path)
     assert "HWPX 문서" in str(exc.value)
+
+
+def test_old_default_business_keywords_are_upgraded():
+    # 예전 기본값('사물함', '대여')이 그대로 든 설정 파일을 불러와도 지금 기준('사물함배부', '물품대여')을 쓴다.
+    from src.rules_config import build_rules
+    old = {"사업종류_키워드": {"학생회비": ["총학", "학생회비"], "사물함": ["사물함"], "대여": ["대여", "물품대여"]}}
+    r = build_rules(old)
+    assert r.role_for_name("중앙도서관 사물함 관리 운영", 9) == "general"
+    assert r.role_for_name("2학기 온라인 사물함 배부 사업", 1) == "locker"
+    assert r.role_for_name("2학기 물품 대여 사업", 3) == "rental"
+    custom = build_rules({"사업종류_키워드": {"사물함": ["좌석"]}})
+    assert custom.role_for_name("도서관 좌석 관리", 5) == "locker"
+
+
+def test_settings_from_result_zip_and_json():
+    import io, json, zipfile
+    from fastapi.testclient import TestClient
+    from web.app import app
+    from web.settings_file import example_settings, settings_to_json
+    s = example_settings(); s["사업개요"] = "1. 2학기 온라인 사물함 배부 사업"
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr("검수목록.txt", "x"); zf.writestr("설정.json", settings_to_json(s))
+    c = TestClient(app)
+    r = c.post("/settings/from-file", files={"file": ("26-2_결과.zip", buf.getvalue(), "application/zip")})
+    assert r.status_code == 200 and r.json()["사업개요"] == "1. 2학기 온라인 사물함 배부 사업"
+    assert r.json()["비고규칙_바뀜"] is False
+    r = c.post("/settings/from-file", files={"file": ("설정.json", settings_to_json(s).encode(), "application/json")})
+    assert r.status_code == 200
+    bad = io.BytesIO()
+    with zipfile.ZipFile(bad, "w") as zf:
+        zf.writestr("a.txt", "x")
+    r = c.post("/settings/from-file", files={"file": ("other.zip", bad.getvalue(), "application/zip")})
+    assert r.status_code == 400 and "결과 zip" in r.json()["detail"]
+
+
+def test_rules_panel_hidden_unless_admin():
+    from fastapi.testclient import TestClient
+    from web.app import app
+    c = TestClient(app)
+    assert 'group hidden" id="rules-info"' in c.get("/").text
+    assert 'group" id="rules-info"' in c.get("/?admin").text

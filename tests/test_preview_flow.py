@@ -30,7 +30,7 @@ def _page(*rows, kind="수입"):
 # ── 이름 매칭 ────────────────────────────────────────────
 
 def test_spacing_only_difference_matches_with_notice():
-    sem = build_semester_from_overview("1. 사물함\n2. 물품 대여", RULES)
+    sem = build_semester_from_overview("1. 사물함 배부\n2. 물품 대여", RULES)
     overdue = [OverdueRecord(None, "우산 1개", "김 철수", 2000, None)]
     res = build_page_remark(2, _page(_row("김철수", 2000)), [], [], sem)  # 목록 비어 있음
     assert res.text == ""
@@ -41,7 +41,7 @@ def test_spacing_only_difference_matches_with_notice():
 
 
 def test_unmatched_name_suggests_similar():
-    sem = build_semester_from_overview("1. 사물함\n2. 물품 대여", RULES)
+    sem = build_semester_from_overview("1. 사물함 배부\n2. 물품 대여", RULES)
     overdue = [OverdueRecord(None, "우산 1개", "김철쑤", 2000, None), OverdueRecord(None, "우산", "박영희", 2000, None)]
     res = build_page_remark(2, _page(_row("김철수", 2000)), overdue, [], sem)
     assert res.text == ""
@@ -51,7 +51,7 @@ def test_unmatched_name_suggests_similar():
 
 
 def test_refund_spacing_and_suggestion():
-    sem = build_semester_from_overview("1. 사물함\n2. 물품 대여", RULES)
+    sem = build_semester_from_overview("1. 사물함 배부\n2. 물품 대여", RULES)
     refund = [RefundRecord("1", "이 도윤", 4000, "두번송금"), RefundRecord("2", "정예린", 2000, "두번송금")]
     page = _page(_row("이도윤", expense=4000, overview="환불", no=1), _row("정애린", expense=2000, overview="환불", no=1), kind="지출")
     res = build_page_remark(1, page, [], refund, sem)

@@ -165,6 +165,17 @@ def prepare_run(
             input_issues.append(InputIssue(
                 "사업개요", f"장부에 사업번호 {no}번이 있는데 사업개요에 없어 사업명이 비었습니다. "
                            f"사업개요에 '{no}. 사업명' 줄을 추가해 주세요."))
+    kinds = {"locker": "사물함", "rental": "물품 대여"}
+    auto_remark = [f"{no}번 {semester.name_for(no)}({kinds[semester.role_for(no)]})"
+                   for no in sorted(ledger_by_business) if semester.role_for(no) in kinds]
+    if auto_remark:
+        input_issues.append(InputIssue(
+            "사업개요", f"비고를 미리 채운 사업: {', '.join(auto_remark)}. 나머지 사업의 비고는 비워 두었습니다.",
+            advisory=True))
+    else:
+        input_issues.append(InputIssue(
+            "사업개요", "사물함 배부·물품 대여 사업을 찾지 못해 비고를 모두 비워 두었습니다. "
+                       "사업개요의 사업명에 '사물함 배부' 또는 '물품 대여'가 들어 있는지 확인해 주세요.", advisory=True))
     unused = sorted(set(semester.businesses) - set(ledger_by_business))
     if unused:
         input_issues.append(InputIssue(

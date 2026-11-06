@@ -31,10 +31,11 @@ TEMPLATE_FIELDS: dict[str, tuple[str, ...]] = {
 }
 
 DEFAULT_RULES: dict[str, Any] = {
+    # 비고를 미리 채우는 주요 사업만 알아본다(나머지는 일반 = 비고 비움). 띄어쓰기 무시.
     "사업종류_키워드": {
         "학생회비": ["총학", "학생회비"],
-        "사물함": ["사물함"],
-        "대여": ["대여", "물품대여"],
+        "사물함": ["사물함배부"],
+        "대여": ["물품대여"],
     },
     "환불페이지_키워드": ["환불"],
     # 규정상 단가(3,000원, 피크닉용품)와 실제로 받는 금액(그 외 2,000원)이 자주 달라 항상 검수필요로 올리는 물품
@@ -168,11 +169,18 @@ def _check_template(name: str, text: Any) -> str:
     return text
 
 
+# 예전 기본값 그대로 저장된 설정 파일은 지금 기본값을 쓰게 한다(직접 고친 값은 그대로 둔다).
+_OLD_DEFAULTS = {
+    "사업종류_키워드": {"학생회비": ["총학", "학생회비"], "사물함": ["사물함"], "대여": ["대여", "물품대여"]},
+}
+
+
 def merge_with_defaults(user: dict[str, Any] | None) -> dict[str, Any]:
     """사용자가 적은 항목만 기본값 위에 덮는다. 사전형 항목은 키 단위로 합친다."""
     merged = copy.deepcopy(DEFAULT_RULES)
     if not user:
         return merged
+    user = {k: v for k, v in user.items() if _OLD_DEFAULTS.get(k) != v}
     _as_dict(user, "비고규칙")
     user = {k: v for k, v in user.items() if k not in RETIRED_KEYS}
     unknown = [k for k in user if k not in DEFAULT_RULES and not str(k).startswith("_")]

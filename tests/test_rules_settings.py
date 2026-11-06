@@ -26,7 +26,7 @@ OVERDUE_RULES = parse_overdue_rules_data({
 })
 
 
-def _semester(overview="1. 사물함 사업\n2. 물품 대여 사업", rules=None):
+def _semester(overview="1. 사물함 배부 사업\n2. 물품 대여 사업", rules=None):
     return build_semester_from_overview(overview, OVERDUE_RULES, None, rules)
 
 
@@ -190,7 +190,7 @@ def test_settings_file_round_trip_and_no_contact():
 def test_cli_config_reads_rules_and_roles():
     cfg = parse_semester_config_data({
         "label": "2026-2학기",
-        "businesses": {"1": {"name": "좌석 관리", "role": "사물함"}, "2": {"name": "우산 대여"}},
+        "businesses": {"1": {"name": "좌석 관리", "role": "사물함"}, "2": {"name": "우산 물품 대여"}},
         "overdue_rules": {"default_per_day": 2000, "categories": []},
         "locker": {"refund_fee_advisory": "수수료 확인"},
         "비고규칙": {"환불페이지_키워드": ["반환"]},

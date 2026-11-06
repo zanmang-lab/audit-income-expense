@@ -1,6 +1,8 @@
 """FastAPI 웹 앱 — 업로드 → 마스킹 → 엔진 → zip 다운로드."""
 from __future__ import annotations
 
+import json
+
 import logging
 import shutil
 import sys
@@ -236,6 +238,7 @@ async def index(request: Request) -> HTMLResponse:
             "default_rules_json": default_rules_text(),
             "example_author": EXAMPLE_AUTHOR,
             "template_fields": TEMPLATE_FIELDS,
+            "admin": "admin" in request.query_params or "관리자" in request.query_params,
         },
     )
 
@@ -479,6 +482,47 @@ async def build(request: Request, preview_id: str) -> HTMLResponse:
 async def settings_example() -> JSONResponse:
     """기본값 설정 — 첫 화면 '기본값으로 되돌리기'에서 쓴다."""
     return JSONResponse(example_settings())
+
+
+@app.post("/settings/from-file")
+async def settings_from_file(file: UploadFile = File(...)) -> JSONResponse:
+    """지난 학기 결과 zip(또는 그 안의 설정.json)에서 입력칸에 채울 값을 꺼낸다."""
+    import zipfile as _zip
+    from io import BytesIO as _BytesIO
+
+    def _json_error(msg: str) -> JSONResponse:
+        return JSONResponse({"detail": msg}, status_code=400)
+
+    data = await file.read()
+    if len(data) > MAX_FILE_BYTES:
+        return _json_error("파일이 너무 큽니다.")
+
+    text = None
+    if data.startswith(b"PK"):
+        try:
+            with _zip.ZipFile(_BytesIO(data)) as zf:
+                name = next((n for n in zf.namelist() if n.endswith("설정.json")), None)
+                if name is None:
+                    return _json_error("이 zip에는 지난 학기 입력 내용이 없습니다. 이 프로그램이 만든 결과 zip인지 확인해 주세요.")
+                text = zf.read(name).decode("utf-8-sig")
+        except _zip.BadZipFile:
+            return _json_error("zip 파일을 열지 못했습니다.")
+    else:
+        text = data.decode("utf-8-sig", errors="replace")
+    try:
+        settings = json.loads(text)
+    except json.JSONDecodeError:
+        return _json_error("지난 학기 결과 zip(또는 그 안의 설정.json)을 올려 주세요.")
+    if not isinstance(settings, dict) or "설정버전" not in settings:
+        return _json_error("이 프로그램이 만든 결과 zip(또는 설정.json)이 아닙니다.")
+    rules = settings.get("비고규칙")
+    if isinstance(rules, dict):
+        from src.rules_config import RETIRED_KEYS, _OLD_DEFAULTS, DEFAULT_RULES
+        cleaned = {k: v for k, v in rules.items()
+                   if k not in RETIRED_KEYS and _OLD_DEFAULTS.get(k) != v and not str(k).startswith("_")}
+        settings["비고규칙"] = {**DEFAULT_RULES, **cleaned}
+        settings["비고규칙_바뀜"] = any(DEFAULT_RULES.get(k) != v for k, v in cleaned.items())
+    return JSONResponse(settings)
 
 
 @app.get("/examples/{filename}")
