@@ -175,7 +175,7 @@ def test_example_settings_follow_26_1_format():
 
     s = example_settings()
     assert s["기본정보"]["학기명"] == ""
-    assert s["기본정보"]["작성자"] == {"성명": "", "직위": "학생복지위원장", "소속": "학생복지위원회"}
+    assert s["기본정보"]["작성자"] == {"직위": "학생복지위원장", "소속": "학생복지위원회"}
     assert "1. 1학기 온라인 사물함 배부 사업" in s["사업개요"] and "99. 기타" in s["사업개요"]
     assert s["연체료규정"].splitlines() == [
         "1DAY ₩1,000: 보조배터리",
@@ -360,3 +360,17 @@ def test_must_fix_only_when_document_has_a_hole():
     assert len(must) == 1 and must[0]["대상"] == "나" and must[0]["종류"] == "연체일수를 못 정함"
     kinds = dict((k, len(g)) for k, g in group_by_kind([r for r in rows if r["단계"] == "확인할 것"]))
     assert kinds.get("같은 물품 여러 개") == 1 and kinds.get("연체일수 계산") == 1
+
+
+def test_name_and_semester_are_not_remembered_or_saved():
+    # 학기·성명은 연락처처럼 예시만 보이고, 브라우저가 기억하거나 설정 파일에 저장하지 않는다.
+    from fastapi.testclient import TestClient
+    from web.app import app
+    from web.settings_file import build_settings
+    from src.rules_config import build_rules
+    html = TestClient(app).get("/").text
+    assert 'name="author_name" class="field"' in html and 'id="semester_label">' in html
+    s = build_settings(semester_label="26-2", author={"성명": "홍길동", "직위": "위원장", "연락처": "010"},
+                       locker_deposit_remark="", film_fee_per_sheet=1000, business_overview="", overdue_rules_text="",
+                       rules=build_rules())
+    assert "성명" not in s["기본정보"]["작성자"] and "연락처" not in s["기본정보"]["작성자"]

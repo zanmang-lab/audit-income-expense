@@ -1,7 +1,7 @@
 """설정 파일(.json) — 사업개요·연체료 규정·기본 정보·비고 규칙을 한 파일로 저장·불러오기.
 
 웹 첫 화면에서 불러오면 입력칸이 채워지고, 결과 zip에는 이번에 쓴 설정이 `설정.json`으로 들어간다.
-연락처는 개인정보라 설정 파일에 넣지 않는다.
+성명·연락처는 개인정보라 설정 파일에 넣지 않는다(학기도 직접 고른다).
 """
 from __future__ import annotations
 
@@ -64,14 +64,14 @@ def build_settings(
     overdue_rules_text: str,
     rules: RuleSet,
 ) -> dict[str, Any]:
-    safe_author = {k: v for k, v in (author or {}).items() if k != "연락처" and v}
+    # 성명·연락처는 개인정보라 설정 파일에 넣지 않는다(학기마다 직접 적음)
+    safe_author = {k: v for k, v in (author or {}).items() if k not in ("연락처", "성명") and v}
     return {
         "_설명": SETTINGS_NOTE,
         "설정버전": SETTINGS_VERSION,
         "기본정보": {
             "학기명": semester_label or "",
             "작성자": {
-                "성명": safe_author.get("성명", ""),
                 "직위": safe_author.get("직위", ""),
                 "소속": safe_author.get("소속", ""),
             },

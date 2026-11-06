@@ -37,7 +37,7 @@
                   <option value="1">1학기</option>
                   <option value="2">2학기</option>
                 </select>
-                <input type="hidden" name="semester_label" id="semester_label" data-remember>
+                <input type="hidden" name="semester_label" id="semester_label">
               </div>
               <p class="inline-preview">문서 표기 <b id="sem-preview">학기를 고르세요</b>, 결과 파일 이름 <code id="file-preview">학기_수입지출내역서_통합본.hwpx</code></p>
             </div>
@@ -49,8 +49,8 @@
                   <input name="author_affiliation" data-remember class="field" value="{{ example_author['소속'] }}" placeholder="예: 학생복지위원회"></label>
                 <label class="label">직위
                   <input name="author_position" data-remember class="field" value="{{ example_author['직위'] }}" placeholder="예: 학생복지위원장"></label>
-                <label class="label">성명
-                  <input name="author_name" data-remember class="field" placeholder="예: 홍길동" autocomplete="off"></label>
+                <label class="label">성명 <span class="opt">저장하지 않음</span>
+                  <input name="author_name" class="field" placeholder="예: 홍길동" autocomplete="off"></label>
                 <label class="label">연락처 <span class="opt">저장하지 않음</span>
                   <input name="author_contact" id="author_contact" class="field" placeholder="예: 010-1234-5678" autocomplete="off"
                     pattern="0\d{1,2}-\d{3,4}-\d{4}" title="010-1234-5678처럼 하이픈(-)을 넣어 적어 주세요"></label>
@@ -365,7 +365,7 @@
       const b = data.기본정보 || {}, a = b.작성자 || {};
       let n = 0;
       const put = (name, v) => { if (v !== undefined && v !== null && String(v) !== '') { byName(name).value = String(v); n++; } };
-      put('author_affiliation', a.소속); put('author_position', a.직위); put('author_name', a.성명);
+      put('author_affiliation', a.소속); put('author_position', a.직위); 
       put('locker_deposit_remark', b.사물함비고문구); put('film_fee_per_sheet', b.필름1장가격);
       put('business_overview', data.사업개요);
       if (data.연체료규정) { loadRulesText(data.연체료규정); n++; }
