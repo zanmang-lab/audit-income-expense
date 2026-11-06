@@ -374,18 +374,26 @@ def review_rows(
     labels: dict[tuple[int, int], str] | None = None,
 ) -> list[dict[str, Any]]:
     """검수 항목을 3단계 순서(꼭 고칠 것 → 확인할 것 → 참고)로. 입력 파일 항목이 먼저."""
-    from .review_levels import LEVELS
+    from .review_levels import LEVELS, kind_of
 
     rows: list[dict[str, Any]] = []
     for i in input_issues:
-        rows.append({"단계": i.level, "사업": None, "쪽": None, "문서표기": "", "대상": i.where,
-                     "내용": i.message, "줄": i.format_line()})
+        rows.append({"단계": i.level, "종류": kind_of(i.message, i.level), "사업": None, "쪽": None, "문서표기": "",
+                     "대상": i.where, "내용": i.message, "줄": i.format_line()})
     for r in review_items:
-        rows.append({"단계": r.level, "사업": r.business_no, "쪽": r.page_index,
+        rows.append({"단계": r.level, "종류": kind_of(r.reason, r.level), "사업": r.business_no, "쪽": r.page_index,
                      "문서표기": (labels or {}).get((r.business_no, r.page_index), ""),
                      "대상": r.target, "내용": r.reason, "줄": r.format_line(labels)})
     order = {lv: n for n, lv in enumerate(LEVELS)}
     return sorted(rows, key=lambda x: order[x["단계"]])  # 같은 단계 안에서는 원래 순서 유지
+
+
+def group_by_kind(rows: Sequence[dict[str, Any]]) -> list[tuple[str, list[dict[str, Any]]]]:
+    """같은 종류끼리 묶고, 많은 종류부터(같으면 처음 나온 순서)."""
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for r in rows:
+        groups.setdefault(r["종류"], []).append(r)
+    return sorted(groups.items(), key=lambda kv: -len(kv[1]))
 
 
 def format_review_report(
@@ -399,9 +407,14 @@ def format_review_report(
     rows = review_rows(review_items, input_issues, labels)
     lines = [REPORT_NOTE, ""]
     for lv in LEVELS:
-        items = [r["줄"] for r in rows if r["단계"] == lv]
-        if items:
-            lines += [f"■ {lv} ({len(items)}건) — {LEVEL_HELP[lv]}", *items, ""]
+        items = [r for r in rows if r["단계"] == lv]
+        if not items:
+            continue
+        lines += [f"■ {lv} ({len(items)}건) — {LEVEL_HELP[lv]}"]
+        for kind, group in group_by_kind(items):
+            lines.append(f"  ▸ {kind} ({len(group)}건)")
+            lines += [f"    {r['줄']}" for r in group]
+        lines.append("")
     return "\n".join(lines).rstrip() + "\n"
 
 

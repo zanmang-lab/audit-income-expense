@@ -206,6 +206,6 @@ def test_result_zip_has_combined_file_checklist_and_no_extras(client):
     assert {"검수목록.xlsx", "검수목록.txt", "읽어주세요.txt"} <= set(names)
     assert not {"연체료규정_추출.json", "사업개요.txt", "연체료규정.txt"} & set(names)
     ws = openpyxl.load_workbook(io.BytesIO(z.read("검수목록.xlsx"))).active
-    assert [c.value for c in ws[1]] == ["확인", "단계", "사업", "쪽", "문서 사업번호", "대상", "내용"]
+    assert [c.value for c in ws[1]] == ["확인", "단계", "종류", "사업", "쪽", "문서 사업번호", "대상", "내용"]
     levels = [row[1] for row in ws.iter_rows(min_row=2, values_only=True)]
     assert levels and levels == sorted(levels, key=["꼭 고칠 것", "확인할 것", "참고"].index)

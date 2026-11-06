@@ -461,10 +461,14 @@ async def build(request: Request, preview_id: str) -> HTMLResponse:
 
     s = result.summary
     from src.review_levels import LEVEL_HELP, LEVELS
-    review_groups = [
-        {"level": lv, "help": LEVEL_HELP[lv], "lines": [r["줄"].split("] ", 1)[-1] for r in result.review_rows if r["단계"] == lv]}
-        for lv in LEVELS
-    ]
+    from src.pipeline import group_by_kind
+    review_groups = []
+    for lv in LEVELS:
+        rows = [r for r in result.review_rows if r["단계"] == lv]
+        review_groups.append({
+            "level": lv, "help": LEVEL_HELP[lv], "count": len(rows),
+            "kinds": [{"kind": k, "lines": [r["줄"].split("] ", 1)[-1] for r in g]} for k, g in group_by_kind(rows)],
+        })
     return templates.TemplateResponse(
         request,
         "result.html",

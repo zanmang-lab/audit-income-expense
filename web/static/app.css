@@ -182,7 +182,7 @@ textarea.rule-items { resize: none; overflow: hidden; min-height: 44px; }
 .note b { color: inherit; }
 
 /* 선택 사항(지난 학기 zip, 기타 문구): 시트 밖, 조용하게 */
-.aside { margin-top: 24px; padding: 14px 16px; border: 1px dashed var(--line-strong); border-radius: var(--radius); font-size: 14px; color: var(--muted); }
+.aside { margin-top: 20px; gap: 12px 20px; padding: 14px 16px; border: 1px dashed var(--line-strong); border-radius: var(--radius); font-size: 14px; color: var(--muted); }
 .aside .aside-title { color: var(--ink); font-weight: 600; }
 .fold { margin-top: 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--sheet); }
 .fold > summary { list-style: none; cursor: pointer; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; gap: 12px; font-weight: 600; }
@@ -284,6 +284,8 @@ body.only-review .biz:not(.pv-biz-check) { display: none; }
 .group ul { padding: 0 16px 14px 34px; }
 .group li { font-size: 14px; margin-top: 4px; }
 .group-must { border-color: #F3B8B2; }
+.kind-title { padding: 10px 16px 0; font-size: 14px; font-weight: 600; }
+.group .kind-title + ul { padding-top: 2px; }
 
 /* 오류 화면 */
 .error-page { margin-top: 24px; padding: 24px; background: var(--sheet); border: 1px solid var(--line); border-left: 4px solid var(--red); border-radius: var(--radius); }

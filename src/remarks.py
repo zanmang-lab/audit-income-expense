@@ -404,8 +404,9 @@ def _build_rental_remark_line(
         line = R.render("연체", 일수=days, **common)
     elif days is not None:
         line = R.render("연체_검수", 일수=days, **common)
+        # 일수는 계산해 넣었으므로 문서에 빈 곳은 없다 → '확인할 것'
         reviews.append(
-            RemarkReview(target=review_target, reason=day_review or "연체일수 역산 예외")
+            RemarkReview(target=review_target, reason=day_review or "연체일수 역산 예외", advisory=True, auto=True)
         )
     else:
         line = R.render("연체_일수불명", **common)

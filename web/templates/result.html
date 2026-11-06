@@ -7,7 +7,7 @@
 <body>
   {% include "includes/header.html" %}
   {% from "includes/icons.html" import icon %}
-  {% set must = review_groups[0].lines|length %}
+  {% set must = review_groups[0].count %}
 
   <main class="wrap">
     <p class="row small" style="gap:20px">
@@ -36,23 +36,45 @@
       <div><dt>사업</dt><dd>{{ business_count }}<small>개</small></dd></div>
       <div><dt>쪽</dt><dd>{{ page_count }}<small>쪽</small></dd></div>
       <div><dt>꼭 고칠 것</dt><dd class="{% if must %}lvl-must{% endif %}">{{ must }}<small>건</small></dd>
-        <p class="sub">확인할 것 {{ review_groups[1].lines|length }}건, 참고 {{ review_groups[2].lines|length }}건</p></div>
+        <p class="sub">확인할 것 {{ review_groups[1].count }}건, 참고 {{ review_groups[2].count }}건</p></div>
     </dl>
     <p class="mt-3 small muted">{{ masking_message }}</p>
 
     <h2 class="section-title">검수 항목</h2>
     <p class="help">검수목록.xlsx에 같은 내용이 체크리스트로 있습니다. 쪽은 사업별 파일 기준이고, 괄호 안은 문서에 찍힌 사업번호입니다.</p>
-    {% for g in review_groups %}{% if g.lines %}
-    <details class="group {% if loop.index == 1 %}group-must{% endif %}" {% if loop.index == 1 %}open{% endif %}>
-      <summary>
-        <span class="tag {% if loop.index == 1 %}tag-must{% elif loop.index == 2 %}tag-check{% else %}tag-note{% endif %}">{{ g.level }} {{ g.lines|length }}건</span>
-        <span class="small muted">{{ g.help }}</span>
-      </summary>
-      <ul>{% for line in g.lines %}<li>{{ line }}</li>{% endfor %}</ul>
+    {% set g = review_groups[0] %}
+    {% if g.count %}
+    <section class="group group-must" style="padding-bottom:6px">
+      <p class="row" style="padding:12px 16px 0"><span class="tag tag-must">꼭 고칠 것 {{ g.count }}건</span><span class="small muted">문서에 빈 곳이나 빠진 행이 있습니다. 이것부터 고치세요.</span></p>
+      {% for k in g.kinds %}
+      <p class="kind-title">{{ k.kind }} <span class="muted">{{ k.lines|length }}건</span></p>
+      <ul>{% for line in k.lines %}<li>{{ line }}</li>{% endfor %}</ul>
+      {% endfor %}
+    </section>
+    {% else %}
+    <p class="note note-green mt-2">꼭 고칠 것이 없습니다.</p>
+    {% endif %}
+
+    {% set g = review_groups[1] %}
+    {% if g.count %}
+    <p class="row mt-6"><span class="tag tag-check">확인할 것 {{ g.count }}건</span><span class="small muted">프로그램이 계산하거나 바꿔 적은 곳입니다. 종류를 눌러 필요한 것만 보세요.</span></p>
+    {% for k in g.kinds %}
+    <details class="group">
+      <summary><b>{{ k.kind }}</b> <span class="muted">{{ k.lines|length }}건</span></summary>
+      <ul>{% for line in k.lines %}<li>{{ line }}</li>{% endfor %}</ul>
     </details>
-    {% endif %}{% endfor %}
-    {% if not must and not review_groups[1].lines and not review_groups[2].lines %}
-    <p class="note note-green mt-2">검수 항목이 없습니다.</p>
+    {% endfor %}
+    {% endif %}
+
+    {% set g = review_groups[2] %}
+    {% if g.count %}
+    <details class="group mt-6">
+      <summary><span class="tag tag-note">참고 {{ g.count }}건</span> <span class="small muted">알고만 있으면 되는 것</span></summary>
+      {% for k in g.kinds %}
+      <p class="kind-title">{{ k.kind }}</p>
+      <ul>{% for line in k.lines %}<li>{{ line }}</li>{% endfor %}</ul>
+      {% endfor %}
+    </details>
     {% endif %}
 
     <h2 class="section-title">이번에 쓴 연체료 규정</h2>

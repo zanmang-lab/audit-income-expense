@@ -124,7 +124,8 @@ def test_no_review_marker_inside_document_when_days_known():
     overdue = [OverdueRecord(None, "우산 3개", "박", 6000, None)]
     res = run_engine({3: [_row(3, 1, "박", income=6000)]}, sem, overdue, [])
     assert res.businesses[3].pages[0].remark == "박님 우산 3개 대여 후 3일 연체되어 연체료 6,000원 부과"
-    assert any("복수 수량" in r.reason and not r.advisory for r in res.review_items)
+    # 일수는 계산했으므로 '확인할 것'(꼭 고칠 것 아님)
+    assert any("복수 수량" in r.reason and r.level == "확인할 것" for r in res.review_items)
 
 
 def test_summary_row_without_business_and_item_is_soft_notice():
@@ -346,3 +347,16 @@ def test_rules_panel_hidden_unless_admin():
     c = TestClient(app)
     assert 'fold hidden" id="rules-info"' in c.get("/").text
     assert 'class="fold" id="rules-info"' in c.get("/?admin").text
+
+
+def test_must_fix_only_when_document_has_a_hole():
+    # 일수를 못 정하면 '꼭 고칠 것', 계산했으면 '확인할 것'. 종류로 묶인다.
+    from src.pipeline import group_by_kind, review_rows
+    sem = build_semester_from_overview("3. 물품 대여 사업", RULES)
+    overdue = [OverdueRecord(None, "우산 3개", "가", 6000, None), OverdueRecord(None, "우산 1개", "나", 2500, None)]
+    res = run_engine({3: [_row(3, 1, "가", income=6000), _row(3, 2, "나", income=2500)]}, sem, overdue, [])
+    rows = review_rows(res.review_items)
+    must = [r for r in rows if r["단계"] == "꼭 고칠 것"]
+    assert len(must) == 1 and must[0]["대상"] == "나" and must[0]["종류"] == "연체일수를 못 정함"
+    kinds = dict((k, len(g)) for k, g in group_by_kind([r for r in rows if r["단계"] == "확인할 것"]))
+    assert kinds.get("같은 물품 여러 개") == 1 and kinds.get("연체일수 계산") == 1

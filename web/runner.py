@@ -248,9 +248,13 @@ def review_checklist_xlsx(rows: list[dict], semester_label: str) -> bytes:
     wb = Workbook()
     ws = wb.active
     ws.title = "검수목록"
-    ws.append(["확인", "단계", "사업", "쪽", "문서 사업번호", "대상", "내용"])
-    for r in rows:
-        ws.append(["", r["단계"], r["사업"], r["쪽"], r["문서표기"], r["대상"], r["내용"]])
+    ws.append(["확인", "단계", "종류", "사업", "쪽", "문서 사업번호", "대상", "내용"])
+    from src.pipeline import group_by_kind
+    from src.review_levels import LEVELS
+    for lv in LEVELS:
+        for _, group in group_by_kind([r for r in rows if r["단계"] == lv]):
+            for r in group:
+                ws.append(["", r["단계"], r["종류"], r["사업"], r["쪽"], r["문서표기"], r["대상"], r["내용"]])
     fills = {MUST: "F8CBAD", CHECK: "DDEBF7", NOTE: "EDEDED"}
     for c in ws[1]:
         c.font = Font(bold=True)
@@ -261,10 +265,10 @@ def review_checklist_xlsx(rows: list[dict], semester_label: str) -> bytes:
         row[0].alignment = Alignment(horizontal="center", vertical="top")
         for c in row[1:]:
             c.alignment = Alignment(wrap_text=True, vertical="top")
-    for col, w in {"A": 6, "B": 11, "C": 6, "D": 5, "E": 13, "F": 16, "G": 90}.items():
+    for col, w in {"A": 6, "B": 11, "C": 18, "D": 6, "E": 5, "F": 13, "G": 16, "H": 90}.items():
         ws.column_dimensions[col].width = w
     ws.freeze_panes = "A2"
-    ws.auto_filter.ref = f"A1:G{max(ws.max_row, 2)}"
+    ws.auto_filter.ref = f"A1:H{max(ws.max_row, 2)}"
     help_ws = wb.create_sheet("보는 법")
     for line in [
         f"{semester_label} 수입지출내역서 검수목록",
@@ -274,7 +278,8 @@ def review_checklist_xlsx(rows: list[dict], semester_label: str) -> bytes:
         "참고: 알고만 있으면 되는 것.",
         "",
         "쪽은 사업별 파일 기준입니다. 통합본에서는 '문서 사업번호'(예: 3-8~10)로 찾으세요.",
-        "확인한 줄의 '확인' 칸에 O를 적으며 진행하면 됩니다. 단계 칸 필터로 골라 볼 수 있습니다.",
+        "꼭 고칠 것부터 보세요. 확인할 것은 종류 칸 필터로 같은 종류끼리 모아 보면 빠릅니다.",
+        "확인한 줄의 '확인' 칸에 O를 적으며 진행하면 됩니다.",
     ]:
         help_ws.append([line])
     help_ws.column_dimensions["A"].width = 100
