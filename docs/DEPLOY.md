@@ -34,10 +34,9 @@ GitHub 저장소를 **Render**에 연결하면 `https://xxxx.onrender.com` 형�
 정상이면 https://<서비스명>.onrender.com/api/health 에 JSON이 보입니다.
 
 ```json
-{"status":"ok","parser_build":"table-format-v2","ocr_package":true,"hwp_supported":false,...}
+{"status":"ok","parser_build":"table-format-v2","hwp_supported":false,...}
 ```
 
-`ocr_package`이 `true`이면 OCR 패키지는 설치된 상태입니다. (모델은 첫 이미지 업로드 시 로드)
 
 ### HTTP 502
 
@@ -58,13 +57,9 @@ GitHub 저장소를 **Render**에 연결하면 `https://xxxx.onrender.com` 형�
 
 한글·pyhwpx가 필요하면 각 PC에서 `run_web.bat` 실행 → `http://127.0.0.1:8000`
 
-## 3. 환경 변수 (선택)
+## 3. 환경 변수
 
-| 변수 | 설명 |
-|------|------|
-| `OPENAI_API_KEY` | 연체료 이미지 OCR 실패 시 Vision API |
-
-Render 대시보드 → Service → **Environment** 에서 추가.
+따로 넣을 환경 변수는 없습니다(연체료 규정은 웹 입력칸에 글자로 적습니다).
 
 ## 4. 수동 Docker 실행
 

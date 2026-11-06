@@ -1,12 +1,7 @@
-"""연체료 규정 이미지 → OverdueRulesConfig 변환."""
+"""연체료 규정 텍스트(웹 입력칸) → OverdueRulesConfig 변환."""
 from __future__ import annotations
 
-import base64
-import json
-import os
 import re
-from io import BytesIO
-from pathlib import Path
 
 from .config_gen import CategoryRule, OverdueRulesConfig, parse_overdue_rules_data
 
@@ -21,19 +16,19 @@ _DAILY_FEE_LINE_RE = re.compile(
 _DEFAULT_HINT_RE = re.compile(r"그\s*외|기본")
 _SEPARATORS = ("—", "–", "-", ":", "：", "|")
 _FOOTER_HINT_RE = re.compile(r"메일|인스타|위원회|@|naver|instagram", re.IGNORECASE)
-_OCR_DIGIT_FIX = str.maketrans({"O": "0", "o": "0", "l": "1", "I": "1", "S": "5", "Z": "2"})
+_DIGIT_FIX = str.maketrans({"O": "0", "o": "0", "l": "1", "I": "1", "S": "5", "Z": "2"})
 
 
 def _strip_markup(line: str) -> str:
     return re.sub(r"<[^>]+>", "", line).strip()
 
 
-def _normalize_ocr_text(text: str) -> str:
+def _normalize_text(text: str) -> str:
     return text.replace("日", "일").replace("／", "/")
 
 
 def _normalize_amount_digits(raw: str) -> int | None:
-    cleaned = raw.translate(_OCR_DIGIT_FIX)
+    cleaned = raw.translate(_DIGIT_FIX)
     digits = re.sub(r"[^\d]", "", cleaned)
     if not digits:
         return None
@@ -266,8 +261,8 @@ def _parse_day_fee_colon_rules(lines: list[str]) -> OverdueRulesConfig | None:
 
 
 def parse_overdue_rules_text(text: str) -> OverdueRulesConfig:
-    """규정표 텍스트(OCR·SVG·직접 입력)에서 물품별 1일 단가를 추출한다."""
-    normalized = _normalize_ocr_text(text)
+    """규정표 텍스트(웹 입력칸)에서 물품별 1일 단가를 추출한다."""
+    normalized = _normalize_text(text)
     lines = [_strip_markup(raw.strip()) for raw in normalized.splitlines() if raw.strip()]
 
     for parser in (_parse_day_fee_colon_rules, _parse_inline_rules, _parse_table_fee_rules):
@@ -278,199 +273,6 @@ def parse_overdue_rules_text(text: str) -> OverdueRulesConfig:
     raise ValueError(
         "연체료 규정 표에서 1일 단가를 찾지 못했습니다. "
         "'1DAY ₩1,000: 물품명' 또는 '물품명 — 1,000원/일' 형식인지 확인해 주세요."
-    )
-
-
-def extract_text_from_svg(data: bytes) -> str:
-    text = data.decode("utf-8", errors="ignore")
-    parts = re.findall(r">([^<]+)<", text)
-    return "\n".join(p.strip() for p in parts if p.strip())
-
-
-def _ocr_lines_from_output(output) -> list[str]:
-    if output is None:
-        return []
-    if hasattr(output, "txts"):
-        return [str(t).strip() for t in (output.txts or ()) if str(t).strip()]
-    if isinstance(output, tuple):
-        result = output[0]
-        if not result:
-            return []
-        return [str(item[1]).strip() for item in result if len(item) > 1 and item[1]]
-    return []
-
-
-_rapid_ocr = None
-
-
-def _get_rapid_ocr():
-    """한국어 인식 모델(PP-OCRv4 korean). 최초 실행 시 모델 다운로드(~25MB)."""
-    global _rapid_ocr
-    if _rapid_ocr is not None:
-        return _rapid_ocr
-
-    errors: list[str] = []
-    try:
-        from rapidocr import EngineType, LangRec, RapidOCR
-        from rapidocr.utils.typings import ModelType, OCRVersion
-
-        _rapid_ocr = RapidOCR(
-            params={
-                "Rec.lang_type": LangRec.KOREAN,
-                "Rec.engine_type": EngineType.ONNXRUNTIME,
-                "Rec.ocr_version": OCRVersion.PPOCRV4,
-                "Rec.model_type": ModelType.MOBILE,
-            }
-        )
-        return _rapid_ocr
-    except Exception as exc:
-        errors.append(f"rapidocr: {exc}")
-
-    try:
-        from rapidocr_onnxruntime import RapidOCR as LegacyRapidOCR
-
-        _rapid_ocr = LegacyRapidOCR()
-        return _rapid_ocr
-    except Exception as exc:
-        errors.append(f"rapidocr_onnxruntime: {exc}")
-
-    raise ImportError(" / ".join(errors))
-
-
-def extract_text_with_rapidocr(data: bytes) -> str:
-    """사진·스캔 이미지 OCR (한국어 모델, 32비트 Windows 지원)."""
-    import numpy as np
-    from PIL import Image
-
-    image = Image.open(BytesIO(data))
-    if image.mode != "RGB":
-        image = image.convert("RGB")
-    engine = _get_rapid_ocr()
-    try:
-        output = engine(data)
-    except Exception:
-        output = engine(np.array(image))
-    lines = _ocr_lines_from_output(output)
-    return _normalize_ocr_text("\n".join(lines))
-
-
-def extract_text_with_easyocr(data: bytes) -> str:
-    import easyocr
-    import numpy as np
-    from PIL import Image
-
-    image = Image.open(BytesIO(data)).convert("RGB")
-    reader = easyocr.Reader(["ko", "en"], gpu=False, verbose=False)
-    lines = reader.readtext(np.array(image), detail=0, paragraph=True)
-    return "\n".join(str(line).strip() for line in lines if str(line).strip())
-
-
-def parse_with_openai_vision(data: bytes, ext: str) -> OverdueRulesConfig:
-    from openai import OpenAI
-
-    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
-    if not api_key:
-        raise ValueError("OPENAI_API_KEY가 설정되어 있지 않습니다.")
-
-    mime = {
-        ".png": "image/png",
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".webp": "image/webp",
-        ".gif": "image/gif",
-        ".bmp": "image/bmp",
-    }.get(ext.lower(), "image/png")
-
-    client = OpenAI(api_key=api_key)
-    prompt = """이 이미지는 학생회 물품 대여 연체료 규정표입니다.
-물품별 1일 연체료를 JSON으로만 출력하세요. 다른 설명은 금지.
-
-형식:
-{
-  "default_per_day": 숫자,
-  "categories": [
-    {"per_day": 숫자, "keywords": ["물품키워드", ...]}
-  ]
-}
-
-- '그 외', '기본' 행은 default_per_day에 넣습니다.
-- keywords는 장부·연체료 목록에 나올 수 있는 짧은 물품명 조각입니다.
-- 금액은 원 단위 정수입니다."""
-
-    response = client.chat.completions.create(
-        model=os.environ.get("OPENAI_VISION_MODEL", "gpt-4o-mini"),
-        response_format={"type": "json_object"},
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": prompt},
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": (
-                                f"data:{mime};base64,"
-                                f"{base64.b64encode(data).decode('ascii')}"
-                            )
-                        },
-                    },
-                ],
-            }
-        ],
-        max_tokens=1500,
-    )
-    raw = response.choices[0].message.content or "{}"
-    return parse_overdue_rules_data(json.loads(raw))
-
-
-def parse_overdue_rules_image(data: bytes, filename: str) -> OverdueRulesConfig:
-    """업로드 이미지에서 연체료 계산 규칙을 추출한다."""
-    if len(data) < 8:
-        raise ValueError("연체료 규정 이미지가 비어 있습니다.")
-
-    ext = Path(filename).suffix.lower()
-    errors: list[str] = []
-
-    if os.environ.get("OPENAI_API_KEY", "").strip():
-        try:
-            return parse_with_openai_vision(data, ext)
-        except Exception as exc:
-            errors.append(f"AI 인식 실패: {exc}")
-
-    if ext == ".svg" or data.lstrip()[:1] == b"<":
-        text = extract_text_from_svg(data)
-        if text.strip():
-            try:
-                return parse_overdue_rules_text(text)
-            except ValueError as exc:
-                errors.append(str(exc))
-        else:
-            errors.append("SVG에서 규정 문구를 찾지 못했습니다.")
-
-    ocr_attempts: list[tuple[str, callable]] = [
-        ("rapidocr", extract_text_with_rapidocr),
-        ("easyocr", extract_text_with_easyocr),
-    ]
-    for name, extractor in ocr_attempts:
-        try:
-            text = extractor(data)
-            if not text.strip():
-                errors.append(f"{name} 결과가 비어 있습니다.")
-                continue
-            try:
-                return parse_overdue_rules_text(text)
-            except ValueError as exc:
-                errors.append(f"{name} 텍스트 파싱 실패: {exc}")
-        except ImportError as exc:
-            errors.append(f"{name} 미설치: {exc}")
-        except Exception as exc:
-            errors.append(f"{name} 실패: {exc}")
-
-    detail = " / ".join(errors) if errors else "알 수 없는 오류"
-    raise ValueError(
-        "연체료 규정 이미지를 읽지 못했습니다. "
-        "표가 선명한 사진·스캔인지 확인해 주세요. "
-        f"({detail})"
     )
 
 

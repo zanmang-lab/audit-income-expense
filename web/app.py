@@ -21,7 +21,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 
-from src.parse_overdue_rules_image import (
+from src.parse_overdue_rules import (
     PARSER_BUILD_ID,
     parse_overdue_rules_text,
     rules_to_summary,
@@ -65,10 +65,6 @@ PREVIEW_TTL_SECONDS = 1800  # 미리보기에서 고치는 시간
 async def lifespan(_app: FastAPI):
     """서버 시작 시 예시 파일 준비, 종료 시 임시 작업 폴더 정리."""
     ensure_example_files(EXAMPLES_DIR)
-    if _ocr_package_available():
-        logger.info("rapidocr 패키지 확인됨 (모델은 첫 이미지 업로드 시 로드)")
-    else:
-        logger.warning("rapidocr 패키지 없음 — 연체료 이미지 인식 불가")
     yield
     for jid in list(_jobs.keys()):
         _remove_job(jid)
@@ -148,8 +144,7 @@ def _wants_html(request: Request) -> bool:
 
 def _error_page_context(detail: str, status_code: int) -> dict:
     detail_str = str(detail)
-    show_ocr = "연체료 규정" in detail_str
-    if show_ocr:
+    if "연체료 규정" in detail_str:
         title = "연체료 규정을 읽지 못했습니다"
         icon = "document_scanner"
     elif "xlsx" in detail_str.lower() or "엑셀" in detail_str or "열을 찾지 못했습니다" in detail_str or "장부 데이터를 찾지 못했습니다" in detail_str:
@@ -174,7 +169,6 @@ def _error_page_context(detail: str, status_code: int) -> dict:
         "error_title": title,
         "error_message": detail_str,
         "error_icon": icon,
-        "show_ocr_tips": show_ocr,
     }
 
 
@@ -214,13 +208,6 @@ async def _read_bytes(upload: UploadFile, field_name: str, max_bytes: int = MAX_
     return data
 
 
-def _ocr_package_available() -> bool:
-    """패키지 설치 여부만 확인 (모델 로드·메모리 사용 없음)."""
-    import importlib.util
-
-    return importlib.util.find_spec("rapidocr") is not None
-
-
 @app.get("/api/health")
 def health_check():
     """실행 중인 서버가 최신 연체료 파서를 쓰는지 확인."""
@@ -232,7 +219,6 @@ def health_check():
         "supports_table_format": True,
         "app": "upload-web",
         "hwp_supported": hwp_conversion_available(),
-        "ocr_package": _ocr_package_available(),
         "public_url": os.environ.get("RENDER_EXTERNAL_URL"),
     }
 

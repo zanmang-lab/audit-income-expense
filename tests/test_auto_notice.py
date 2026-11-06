@@ -226,7 +226,7 @@ def test_first_page_has_26_1_defaults():
 
 def test_keyword_matching_ignores_spacing():
     from web.semester_inputs import EXAMPLE_OVERDUE_RULES
-    from src.parse_overdue_rules_image import parse_overdue_rules_text
+    from src.parse_overdue_rules import parse_overdue_rules_text
 
     rules = parse_overdue_rules_text(EXAMPLE_OVERDUE_RULES)
     assert lookup_per_day("피크닉 테이블 1개", rules) == 3000
@@ -270,3 +270,21 @@ def test_default_rental_evidence_image_exists():
     from src.evidence_image import default_rental_evidence
     img = default_rental_evidence()
     assert img is not None and img.ext == "jpg" and img.width_px > 0
+
+
+def test_tripod_mat_boardgame_always_reviewed():
+    # 삼각대·돗자리·보드게임: 규정 3,000원이지만 실제로 2,000원으로 받는 일이 많아 항상 검수필요.
+    from web.semester_inputs import EXAMPLE_OVERDUE_RULES
+    from src.parse_overdue_rules import parse_overdue_rules_text
+    from src.remarks import _calc_overdue_days
+    from src.rules_config import build_rules
+
+    rules = parse_overdue_rules_text(EXAMPLE_OVERDUE_RULES)
+    watch = build_rules().overdue_watch
+    days, why = _calc_overdue_days(6000, "삼각대 1개", rules, watch)
+    assert days == 2 and "실제로는 그 외 물품 금액" in why and "2,000원으로 받았다면 3일" in why
+    days, why = _calc_overdue_days(2000, "돗자리(소) 1개", rules, watch)
+    assert days is None and "받았다면 1일" in why
+    days, why = _calc_overdue_days(3000, "앰프 1개", rules, watch)
+    assert days == 1 and why is None
+    assert build_rules({"연체료_항상검수_물품": []}).overdue_watch == ()

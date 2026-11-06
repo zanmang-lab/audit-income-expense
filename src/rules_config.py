@@ -37,6 +37,8 @@ DEFAULT_RULES: dict[str, Any] = {
         "대여": ["대여", "물품대여"],
     },
     "환불페이지_키워드": ["환불"],
+    # 규정상 단가(3,000원, 피크닉용품)와 실제로 받는 금액(그 외 2,000원)이 자주 달라 항상 검수필요로 올리는 물품
+    "연체료_항상검수_물품": ["삼각대", "돗자리", "보드게임"],
     "환불사유_표현": {
         "당첨등록포기": "당첨 등록 포기",
         "두번송금": "두 번 송금",
@@ -90,6 +92,7 @@ class RuleSet:
     refund_groups: dict[str, tuple[str, str]]
     rental_note_kinds: dict[str, tuple[str, ...]]  # 분류 → 공백 뺀 비고 문구들
     refund_fee_advisory: str
+    overdue_watch: tuple[str, ...]  # 연체료를 항상 확인할 물품(공백 뺀 낱말)
     templates: dict[str, str]
     source: dict[str, Any]  # 설정 파일로 다시 저장할 때 쓰는 원본(기본값과 합친 것)
 
@@ -234,6 +237,7 @@ def build_rules(user: dict[str, Any] | None = None) -> RuleSet:
         )
     templates = {name: _check_template(name, templates_raw[name]) for name in TEMPLATE_FIELDS}
 
+    overdue_watch = tuple(_compact(k) for k in _as_str_list(data["연체료_항상검수_물품"], "연체료_항상검수_물품") if _compact(k))
     refund_keywords = tuple(_as_str_list(data["환불페이지_키워드"], "환불페이지_키워드"))
     if not refund_keywords:
         raise RulesError("환불페이지_키워드는 하나 이상 있어야 합니다.")
@@ -245,6 +249,7 @@ def build_rules(user: dict[str, Any] | None = None) -> RuleSet:
         refund_groups=groups,
         rental_note_kinds=note_kinds,
         refund_fee_advisory=str(data["환불수수료_안내"]).strip(),
+        overdue_watch=overdue_watch,
         templates=templates,
         source=data,
     )

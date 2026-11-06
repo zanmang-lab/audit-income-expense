@@ -271,6 +271,7 @@ def _calc_overdue_days(
     fee: int,
     goods_text: str,
     rules: OverdueRulesConfig,
+    watch: tuple[str, ...] = (),
 ) -> tuple[int | None, str | None]:
     goods = parse_rental_goods(goods_text)
     if not goods:
@@ -290,6 +291,17 @@ def _calc_overdue_days(
 
     if len(set(rates)) > 1:
         review_reasons.append("서로 다른 일단가 물품이 함께 대여됨")
+
+    compact_goods = "".join(goods_text.split())
+    watched = [w for w in watch if w in compact_goods]
+    if watched:
+        alt = rules.default_per_day
+        alt_text = (f"그 외 물품 {alt:,}원으로 받았다면 {fee // alt}일" if alt and fee % alt == 0
+                    else f"그 외 물품 {alt:,}원으로도 나누어떨어지지 않음")
+        review_reasons.append(
+            f"'{', '.join(watched)}'은(는) 규정상 1일 {max_daily:,}원이지만 실제로는 그 외 물품 금액으로 받는 경우가 많음 — "
+            f"받은 금액으로 연체일수 확인 필요({alt_text})"
+        )
 
     if fee < max_daily:
         review_reasons.append(
@@ -366,7 +378,7 @@ def _build_rental_remark_line(
         return R.render("손망실비", **common), reviews
 
     if note_kind == "감면":
-        days, day_review = _calc_overdue_days(fee, goods_text, rules)
+        days, day_review = _calc_overdue_days(fee, goods_text, rules, remark_rules.overdue_watch)
         reasons = [r for r in [day_review, "감면 건 — 연체일수·감면 사유 확인 필요"] if r]
         if days is not None:
             reviews.append(RemarkReview(
@@ -380,7 +392,7 @@ def _build_rental_remark_line(
         reviews.append(RemarkReview(target=review_target, reason="; ".join(reasons)))
         return line, reviews
 
-    days, day_review = _calc_overdue_days(fee, goods_text, rules)
+    days, day_review = _calc_overdue_days(fee, goods_text, rules, remark_rules.overdue_watch)
     if days is not None:
         rate = _max_daily_rate(goods_text, rules)
         reviews.append(RemarkReview(
