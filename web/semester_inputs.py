@@ -6,7 +6,6 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 
 from src.config_gen import parse_business_mapping_json
-from src.export_hwp import HwpConversionError, convert_hwp_to_hwpx, hwp_conversion_available
 from src.semester_config import (
     DEFAULT_FILM_FEE_PER_SHEET,
     DEFAULT_LABEL,
@@ -19,7 +18,6 @@ from src.semester_config import (
 from src.config_gen import OverdueRulesConfig
 from src.rules_config import ROLE_BY_LABEL, RuleSet
 
-IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".svg"}
 TEMPLATE_EXTENSIONS = {".hwp", ".hwpx"}
 
 _LINE_MAPPING = re.compile(r"^\s*(\d+)\s*[:\.\|]\s*(.+?)\s*$")
@@ -37,7 +35,7 @@ EXAMPLE_OVERVIEW = """0. 총학생회비 배분
 6. 시험기간 인스타 스토리 인증 이벤트
 7. 대동제
 8. 과일 화채 행사
-9. 중앙도서관 사물함 관리 운영
+9. 중앙도서관 사물함 관리 운영 [일반]
 10. 기말고사 간식행사
 98. 관리운영비
 99. 기타"""
@@ -95,21 +93,10 @@ def resolve_template(
             )
         return upload_path
 
-    if not hwp_conversion_available():
-        raise ValueError(
-            "온라인 서버에서는 hwpx 양식만 업로드할 수 있습니다. "
-            "한글에서 '다른 이름으로 저장 → hwpx' 후 다시 업로드해 주세요."
-        )
-
-    hwpx_path = work_dir / "template.hwpx"
-    try:
-        return Path(convert_hwp_to_hwpx(str(upload_path), str(hwpx_path)))
-    except HwpConversionError as exc:
-        raise ValueError(
-            "hwp 양식을 hwpx로 변환하지 못했습니다. "
-            "한글이 설치된 Windows 서버에서 실행하거나, "
-            "한글에서 hwpx로 저장한 파일을 업로드해 주세요."
-        ) from exc
+    raise ValueError(
+        "서버에서는 .hwp 양식을 읽지 못합니다. 한글에서 양식을 열고 '파일 → 다른 이름으로 저장'에서 "
+        "파일 형식을 'HWPX 문서(*.hwpx)'로 골라 저장한 뒤 올려 주세요."
+    )
 
 
 _ROLE_TAG = re.compile(r"\s*[\[［]\s*(" + "|".join(ROLE_BY_LABEL) + r")\s*[\]］]\s*$")

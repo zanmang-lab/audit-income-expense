@@ -288,3 +288,19 @@ def test_tripod_mat_boardgame_always_reviewed():
     days, why = _calc_overdue_days(3000, "앰프 1개", rules, watch)
     assert days == 1 and why is None
     assert build_rules({"연체료_항상검수_물품": []}).overdue_watch == ()
+
+
+def test_default_overview_marks_library_locker_as_general():
+    # '9. 중앙도서관 사물함 관리 운영'은 이름에 '사물함'이 있지만 대여비 사업이 아니라 일반 사업.
+    from web.semester_inputs import EXAMPLE_OVERVIEW, build_semester_from_overview
+    sem = build_semester_from_overview(EXAMPLE_OVERVIEW, RULES)
+    assert sem.role_for(9) == "general" and sem.name_for(9) == "중앙도서관 사물함 관리 운영"
+    assert sem.role_for(1) == "locker"
+
+
+def test_hwp_template_gets_save_as_message(tmp_path):
+    import pytest
+    from web.semester_inputs import resolve_template
+    with pytest.raises(ValueError) as exc:
+        resolve_template(b"\xd0\xcf\x11\xe0" + b"\0" * 50, "양식.hwp", tmp_path)
+    assert "HWPX 문서" in str(exc.value)

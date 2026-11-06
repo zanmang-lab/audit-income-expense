@@ -16,7 +16,6 @@ from typing import BinaryIO
 
 import openpyxl
 
-from src.export_hwp import HwpConversionError, convert_hwpx_to_hwp
 from src.fill_hwpx import missing_label_fields
 from src.parse_ledger import load_ledger_workbook, parse_ledger_workbook
 from src.pipeline import (
@@ -43,9 +42,6 @@ class PipelineSummary:
     page_count: int
     review_count: int
     hwpx_count: int
-    hwp_count: int
-    output_format: str
-    hwp_conversion_note: str | None = None
 
 
 @dataclass
@@ -247,13 +243,7 @@ def build_run(prep: PreparedRun) -> PipelineResult:
         semester_config_to_dict(semester)["overdue_rules"], ensure_ascii=False, indent=2
     )
 
-    hwp_paths: list[str] = []
-    hwp_conversion_note: str | None = None
-    try:
-        hwp_paths = convert_hwpx_to_hwp(hwpx_paths)
-    except HwpConversionError as exc:
-        hwp_conversion_note = str(exc)
-    zip_doc_paths = hwp_paths if hwp_paths else hwpx_paths
+    zip_doc_paths = hwpx_paths
 
     zip_path = build_dir / "수입지출내역서_결과.zip"
 
@@ -271,7 +261,7 @@ def build_run(prep: PreparedRun) -> PipelineResult:
 
     run_stage("결과 zip 패키징", _build_zip)
 
-    for hp in [*hwpx_paths, *hwp_paths]:
+    for hp in hwpx_paths:
         Path(hp).unlink(missing_ok=True)
     try:
         output_dir.rmdir()
@@ -283,9 +273,6 @@ def build_run(prep: PreparedRun) -> PipelineResult:
         page_count=prep.page_count,
         review_count=len(result.review_items),
         hwpx_count=len(hwpx_paths),
-        hwp_count=len(hwp_paths),
-        output_format="hwp" if hwp_paths else "hwpx",
-        hwp_conversion_note=hwp_conversion_note,
     )
     return PipelineResult(
         summary=summary,

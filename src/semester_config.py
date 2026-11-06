@@ -88,11 +88,6 @@ def normalize_role(value: Any) -> str | None:
     return None
 
 
-def load_server_defaults() -> SemesterConfig:
-    """서버·CLI용 내부 기본값 (연체료 계산 규칙·사물함 비고 문구 등)."""
-    return default_semester_config()
-
-
 def semester_config_from_business_names(
     name_map: dict[str, str],
     roles: dict[str, str] | None = None,
@@ -219,28 +214,6 @@ def parse_semester_config_data(data: dict[str, Any]) -> SemesterConfig:
             rental_block.get("film_fee_per_sheet", DEFAULT_FILM_FEE_PER_SHEET)
         ),
         overdue_rules=parse_overdue_rules_data(overdue_raw),
-    )
-
-
-def parse_semester_config_json(text: str) -> SemesterConfig:
-    return parse_semester_config_data(json.loads(text))
-
-
-def load_semester_config(path: Path) -> SemesterConfig:
-    with path.open(encoding="utf-8") as f:
-        data = json.load(f)
-    return parse_semester_config_data(data)
-
-
-def default_semester_config() -> SemesterConfig:
-    """config/학기설정.json → examples/학기설정_예시.json 순으로 로드."""
-    root = Path(__file__).resolve().parent.parent
-    for relative in ("config/학기설정.json",):
-        path = root / relative
-        if path.exists():
-            return load_semester_config(path)
-    raise FileNotFoundError(
-        "학기 설정 파일이 없습니다. config/학기설정.json을 준비해 주세요."
     )
 
 

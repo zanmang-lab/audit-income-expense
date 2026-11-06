@@ -146,10 +146,8 @@
           <span class="text-xs text-on-surface-variant">.hwpx (.hwp는 한글에서 hwpx로 저장)</span>
         </div>
         <p class="where mb-3"><b>무엇을</b>: 학복위 수입/지출 내역서 빈 양식 한 장(사업번호·사업명·날짜·세목·수량·단가·총액·비고 칸이 있는 표).</p>
-        {{ file_zone("template", "template", ".hwp,.hwpx", "upload_file", "파일을 드래그하거나 클릭하여 업로드", "hwpx 형식을 권장합니다") }}
-        {% if not hwp_supported %}
-        <p class="mt-2 text-xs text-amber-800">온라인 서버에서는 <strong>hwpx</strong>만 올릴 수 있고, 결과도 hwpx로 받습니다(한글에서 열어 hwp로 저장).</p>
-        {% endif %}
+        {{ file_zone("template", "template", ".hwp,.hwpx", "upload_file", "파일을 드래그하거나 클릭하여 업로드", "hwpx 파일만 됩니다") }}
+        <p class="mt-2 text-xs text-amber-800"><strong>hwpx</strong>만 올릴 수 있습니다. .hwp 양식은 한글에서 '파일 → 다른 이름으로 저장 → HWPX 문서'로 저장해 올리세요(확장자만 바꾸면 안 됩니다). 결과도 hwpx로 받습니다.</p>
       </div>
 
       <!-- ⑤ 장부 -->

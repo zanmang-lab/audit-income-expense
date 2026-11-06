@@ -2,19 +2,8 @@
 
 학생회 감사 자료용 **수입지출내역서**를 엑셀 장부·연체료/환불 목록·연체료 규정 텍스트에서 자동 생성하는 도구입니다.
 
-- **웹 UI**: 브라우저에서 파일 업로드 → 사업별 HWP/HWPX + 검수목록 zip 다운로드
-- **CLI**: `input/` 폴더 + `config/학기설정.json`으로 로컬 일괄 처리
-
-## 요구 사항
-
-| 항목 | 웹 | CLI |
-|------|----|-----|
-| OS | Windows (HWP 변환 시) | Windows 권장 |
-| Python | **3.10+ 64비트 권장** | 동일 |
-| 한글(아래아한글) | HWP 업로드·변환 시 필요 | HWP 출력 시 필요 |
-| HWPX 양식 | 사용자 업로드 | `templates/수입지출내역서_양식.hwpx` 배치 |
-
-> 32비트 Python에서도 동작하지만, 한글 연동은 64비트 환경을 권장합니다.
+- **웹 UI**: 브라우저에서 파일 업로드 → 미리보기 → 사업별 HWPX + 검수목록 zip 다운로드
+- 배포 주소: https://audit-income-expense.onrender.com
 
 ## 클라우드 배포 (공개 URL)
 
@@ -25,23 +14,16 @@
 2. **New Blueprint** → `zanmang-lab/audit-income-expense` 선택
 3. 배포 완료 후 `https://audit-income-expense.onrender.com` 형태 URL 사용
 
-> 클라우드(Linux)에서는 **hwpx만** 지원합니다. HWP 변환은 Windows 로컬(`run_web.bat`)에서만 됩니다.
+> 양식과 결과는 **hwpx**입니다. .hwp 양식은 한글에서 "다른 이름으로 저장 → HWPX 문서"로 저장해 올리고, 결과가 hwp로 필요하면 한글에서 열어 저장합니다.
 
-## 빠른 시작 (로컬 Windows)
+## 내 PC에서 띄워 보기 (개발·확인용)
 
-```bat
-git clone https://github.com/<사용자명>/<저장소명>.git
-cd <저장소명>
-python -m venv .venv
-.venv\Scripts\activate
+```bash
 pip install -r requirements.txt
-run_web.bat
+python -m uvicorn web.app:app --reload
 ```
 
-브라우저에서 http://127.0.0.1:8000 을 엽니다.
-
-서버 상태 확인: http://127.0.0.1:8000/api/health  
-(`parser_build: table-format-v2` 이면 최신 연체료 파서)
+브라우저에서 http://127.0.0.1:8000 을 엽니다. 서버 상태 확인: `/api/health`
 
 ### 처음 쓰는 사람
 
@@ -56,7 +38,7 @@ run_web.bat
 ### 업로드 항목
 
 0. **기본 정보 (선택)** — 학기명(결과 파일 이름 앞에 붙음), 작성자 성명·직위·소속·연락처, 사물함 비고 문구, 필름 1장 가격. 비워 두면 기존 기본값을 씁니다.
-1. **수입지출 양식** — `.hwpx` 권장 (`.hwp`는 한글+pyhwpx로 자동 변환)
+1. **수입지출 양식** — `.hwpx` (한글에서 "다른 이름으로 저장 → HWPX 문서")
 2. **사업개요** — `번호. 사업명` 형식 텍스트
 3. **연체료 규정** — `1DAY ₩1,000: 물품명` 형식 텍스트
 4. **장부** / **연체료목록** / **환불자목록** — `.xlsx`
@@ -103,7 +85,6 @@ run_web.bat
 
   문장 틀에 쓸 수 없는 칸을 넣거나 JSON 형식이 틀리면, 어느 줄·어떤 칸이 문제인지 알려 주고 문서를 만들지 않습니다.
 - 대납 비고는 `백서준'으로 입금` 외에 `백서준으로 입금`(따옴표 없음), `백서준 충당`도 인식합니다.
-- CLI는 `config/학기설정.json`에 `"비고규칙": { ... }`을 넣으면 같은 규칙을 씁니다. `businesses`의 `role`에는 `사물함`/`대여`/`학생회비`/`일반`(또는 영문 locker/rental/student_fee/general)을 쓸 수 있습니다.
 
 ### 엑셀을 읽는 방식
 
@@ -116,23 +97,6 @@ run_web.bat
 - 날짜는 엑셀 날짜, `2026-03-05`, `2026.3.5.`, `2026년 3월 5일`을 읽습니다. 연도가 없는 `3/5`는 추정하지 않습니다. 금액은 `4,000`, `4,000원`도 읽습니다.
 - 읽지 못했거나 제외한 행(날짜·사업번호를 못 읽음, 음수 금액, 한 행에 수입·지출이 함께 있음 등)은 결과 화면의 **입력 파일 확인**과 `검수목록.txt` 맨 위에 `[입력확인] 장부 34행: …` 형식으로 나옵니다. 이 행들은 결과 문서에 빠져 있으니 엑셀을 고친 뒤 다시 생성하세요.
 - 작성자 정보는 양식에서 `성명`·`직위`·`소속`·`연락처` 라벨 칸을 찾아 그 오른쪽 칸에 넣습니다. 라벨을 찾지 못하면 검수목록에 알려 줍니다.
-
-## CLI 사용
-
-```bat
-pip install -r requirements.txt
-```
-
-1. `templates/수입지출내역서_양식.hwpx` — 한글 양식(치환 토큰 포함) 배치
-2. `input/장부.xlsx`, `input/연체료목록.xlsx`, `input/환불자목록.xlsx` 배치
-3. `config/학기설정.json` — 학기·사업명·연체료 규칙·작성자(`author`) 등 조정
-4. 실행:
-
-```bat
-python -m src.main
-```
-
-출력: `output/` 폴더 (파일 이름은 `{label}_{사업번호}_{사업명}.hwpx`)
 
 ## 테스트
 
@@ -151,14 +115,8 @@ python -m pytest tests
 1DAY ₩3,000: 폴라로이드, 앰프, 듀라테이블
 ```
 
-### `pyhwpx` / HWP 변환 오류
-```bat
-pip install "numpy<2"
-```
-한글이 설치된 Windows에서만 HWP 변환이 됩니다. 불가 시 **hwpx 양식을 직접 업로드**하세요.
-
-### HWP 대신 HWPX만 받는 경우
-hwp 변환 실패 시 zip에 hwpx가 포함됩니다. 한글에서 열어 hwp로 저장할 수 있습니다.
+### "올바른 hwpx 형식이 아닙니다" / ".hwp 양식을 읽지 못합니다"
+확장자만 .hwpx로 바꾼 파일입니다. 한글에서 "파일 → 다른 이름으로 저장 → HWPX 문서(*.hwpx)"로 저장해 올리세요.
 
 ## 프로젝트 구조
 
@@ -167,10 +125,10 @@ src/           엔진 (장부 파싱, 연체료 계산, hwpx 채우기)
                sheet_reader.py 엑셀 열 찾기 · rules_config.py 비고 규칙 기본값
                template_layout.py 양식 칸 찾기
 web/           FastAPI 웹 앱 + UI 템플릿 (runner.py: 준비→미리보기→생성, preview.py: 미리보기)
-config/        CLI용 학기 설정 (웹은 업로드만 사용)
+assets/        기본 물품 대여 증빙 그림
 docs/SPEC.md   상세 규칙 명세
 examples/      연체료 규정 예시 SVG 등
-scripts/       검증 스크립트
+scripts/       클라우드 시작 스크립트
 ```
 
 ## 라이선스

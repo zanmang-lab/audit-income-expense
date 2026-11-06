@@ -10,16 +10,8 @@ venv/
 .env
 .env.local
 
-# 생성물
-output/*
-!output/.gitkeep
-
 # 웹 임시
 web/_tmp/
-
-# 로컬 입력 (실제 학기 데이터 — 필요 시 input/에 직접 배치)
-input/*
-!input/.gitkeep
 
 # 프로젝트 루트에 둔 실제 엑셀 (실수 커밋 방지)
 /*.xlsx

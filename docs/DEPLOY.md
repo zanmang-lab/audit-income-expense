@@ -53,15 +53,11 @@ GitHub 저장소를 **Render**에 연결하면 `https://xxxx.onrender.com` 형�
 - **HWP 변환 불가** (Linux 서버) → **hwpx 양식 업로드**, 결과도 **hwpx**로 zip에 포함
 - RAM이 부족하면 Render **Starter** 플랜으로 올리기
 
-## 2. 로컬 Windows (HWP 지원)
-
-한글·pyhwpx가 필요하면 각 PC에서 `run_web.bat` 실행 → `http://127.0.0.1:8000`
-
-## 3. 환경 변수
+## 2. 환경 변수
 
 따로 넣을 환경 변수는 없습니다(연체료 규정은 웹 입력칸에 글자로 적습니다).
 
-## 4. 수동 Docker 실행
+## 3. 수동 Docker 실행
 
 ```bash
 docker build -t audit-income-expense .
@@ -70,8 +66,4 @@ docker run -p 8000:8000 -e PORT=8000 audit-income-expense
 
 ## HWP가 꼭 필요할 때
 
-- **방법 A**: Windows PC에서 `run_web.bat` (로컬)
-- **방법 B**: Windows VPS + 한글 설치 (고급)
-- **방법 C**: hwpx로 받아 한글에서 hwp로 저장
-
-온라인 서버(`/api/health`의 `hwp_supported: false`)에서는 hwpx만 지원합니다.
+결과 hwpx를 한글에서 열어 "다른 이름으로 저장 → .hwp"로 저장합니다. (서버는 hwpx만 다룹니다.)

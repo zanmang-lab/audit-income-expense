@@ -102,17 +102,8 @@
 
         <div class="md:col-span-3 bg-surface-container-lowest border border-outline-variant p-4 rounded-lg">
           <p class="text-label-md font-label-md text-on-surface-variant mb-1">생성 파일</p>
-          <p class="text-body-md text-on-surface">{% if output_format == 'hwp' %}hwp {{ hwp_count }}개{% else %}hwpx {{ hwpx_count }}개{% endif %}</p>
+          <p class="text-body-md text-on-surface">hwpx {{ hwpx_count }}개</p>
         </div>
-        {% if hwp_conversion_note %}
-        <div class="md:col-span-3 bg-amber-50 border border-amber-200 p-4 rounded-lg flex items-start gap-3">
-          <span class="material-symbols-outlined text-amber-700 shrink-0">warning</span>
-          <div>
-            <p class="text-label-md font-label-md text-amber-900">hwp 변환 생략 — hwpx로 포함됨</p>
-            <p class="text-body-md text-amber-800 mt-1">{{ hwp_conversion_note }}</p>
-          </div>
-        </div>
-        {% endif %}
       </section>
 
       {% if input_required or input_advisory %}
@@ -196,7 +187,7 @@
             <div class="space-y-1">
               <p class="text-label-md font-label-md text-on-surface font-bold">Zip 파일 구성</p>
               <ul class="text-body-md text-on-surface-variant list-disc list-inside space-y-1">
-                <li>사업별 수입지출내역서 ({% if output_format == 'hwp' %}.hwp{% else %}.hwpx{% endif %})</li>
+                <li>사업별 수입지출내역서 (.hwpx)</li>
                 <li>검수목록.txt</li>
                 <li>연체료규정_추출.json</li>
                 <li>사업개요.txt</li>

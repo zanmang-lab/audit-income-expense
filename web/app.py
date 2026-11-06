@@ -26,7 +26,6 @@ from src.parse_overdue_rules import (
     parse_overdue_rules_text,
     rules_to_summary,
 )
-from src.export_hwp import hwp_conversion_available
 from web.errors import PipelineError, format_error_detail, is_user_input_error, run_stage
 from web.masking import mask_refund_workbook
 from web.preview import build_preview_view, parse_edit_form
@@ -218,7 +217,6 @@ def health_check():
         "parser_build": PARSER_BUILD_ID,
         "supports_table_format": True,
         "app": "upload-web",
-        "hwp_supported": hwp_conversion_available(),
         "public_url": os.environ.get("RENDER_EXTERNAL_URL"),
     }
 
@@ -233,7 +231,6 @@ async def index(request: Request) -> HTMLResponse:
             "default_overview": default_business_overview_placeholder(),
             "default_overdue_rules": default_overdue_rules_placeholder(),
             "examples": upload_form_examples_html(),
-            "hwp_supported": hwp_conversion_available(),
             "default_locker_remark": DEFAULT_LOCKER_DEPOSIT_REMARK,
             "default_film_fee": DEFAULT_FILM_FEE_PER_SHEET,
             "default_rules_json": default_rules_text(),
@@ -465,10 +462,7 @@ async def build(request: Request, preview_id: str) -> HTMLResponse:
             "masking_message": job.masking_message,
             "business_count": s.business_count,
             "page_count": s.page_count,
-            "hwp_count": s.hwp_count,
             "hwpx_count": s.hwpx_count,
-            "output_format": s.output_format,
-            "hwp_conversion_note": s.hwp_conversion_note,
             "required_count": len(required_items),
             "advisory_count": len(advisory_items),
             "rules_summary": job.rules_summary,
