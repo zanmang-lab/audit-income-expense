@@ -300,3 +300,21 @@ body.only-review .biz:not(.pv-biz-check) { display: none; }
 .chip-btn:hover { border-color: var(--green); background: var(--green-soft); }
 .tpl-example { margin-top: 6px; padding: 8px 10px; background: var(--gray-soft); border-radius: 6px; font-size: 14px; }
 .tpl-error { margin-top: 6px; font-size: 13px; color: var(--red); font-weight: 600; }
+
+/* 비고 문장·기타 문구: 묶음(가·나) → 항목 → 예시 */
+.opt-group { margin-top: 24px; }
+.opt-group-title { display: flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 700; padding-bottom: 10px; border-bottom: 2px solid var(--ink); }
+.opt-group-mark { width: 24px; height: 24px; border-radius: 6px; background: var(--green); color: #fff; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; }
+.opt-item { padding: 14px 0; border-bottom: 1px solid var(--line); }
+.opt-item-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 6px; }
+.opt-item-name { font-weight: 600; font-size: 15px; }
+.opt-item .help { margin-top: 6px; }
+.opt-subhead { margin-top: 20px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.opt-foot { margin-top: 20px; }
+.tpl-example { margin: 0; padding: 10px 12px; background: var(--gray-soft); border-radius: 8px; font-size: 14.5px; }
+.tpl-edit { margin-top: 8px; }
+.tpl-edit .field { margin-top: 0; }
+.evi { display: flex; gap: 16px; align-items: flex-start; }
+.evi-thumb { width: 120px; height: auto; border: 1px solid var(--line); border-radius: 6px; background: #fff; flex: none; }
+.evi-info { min-width: 0; }
+@media (max-width: 560px) { .evi { flex-direction: column; } .evi-thumb { width: 160px; } }

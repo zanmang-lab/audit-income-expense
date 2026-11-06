@@ -383,3 +383,13 @@ def test_friendly_remark_editor_on_first_page():
     for name in ("환불", "대상", "대상_대납", "연체", "필름값", "손망실비", "감면"):
         assert f'data-tpl="{name}"' in html
     assert 'id="reason-rows"' in html and 'id="watch-items"' in html
+
+
+def test_default_evidence_image_is_preselected_on_first_page():
+    from fastapi.testclient import TestClient
+    from web.app import app
+    c = TestClient(app)
+    html = c.get("/").text
+    assert 'id="evi-thumb" src="/default-evidence.jpg"' in html and "선택된 그림" in html
+    r = c.get("/default-evidence.jpg")
+    assert r.status_code == 200 and r.headers["content-type"] == "image/jpeg" and len(r.content) > 10000

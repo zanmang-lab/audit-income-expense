@@ -487,6 +487,13 @@ async def build(request: Request, preview_id: str) -> HTMLResponse:
     )
 
 
+@app.get("/default-evidence.jpg")
+async def default_evidence() -> FileResponse:
+    """첫 화면에서 보여 주는 기본 증빙 그림(물품 대여 사업 안내사항)."""
+    from src.evidence_image import DEFAULT_RENTAL_EVIDENCE
+    return FileResponse(DEFAULT_RENTAL_EVIDENCE, media_type="image/jpeg")
+
+
 @app.get("/settings/example")
 async def settings_example() -> JSONResponse:
     """기본값 설정 — 첫 화면 '기본값으로 되돌리기'에서 쓴다."""

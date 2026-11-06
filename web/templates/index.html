@@ -140,42 +140,68 @@
       </div>
 
       <details class="fold" id="basic-info">
-        <summary><span>비고 문장·기타 문구 <span class="opt">바뀐 학기에만</span></span><span class="chev">{{ icon('chev') }}</span></summary>
+        <summary><span>비고 문장·기타 문구 <span class="opt">바뀐 학기에만 고치세요</span></span><span class="chev">{{ icon('chev') }}</span></summary>
         <div class="fold-body">
-          <p class="help">비고에 들어가는 문장과 금액입니다. 고치면 바로 아래 예시가 바뀌니, 예시를 보며 고치세요. 처음 쓰는 학기라면 그대로 두면 됩니다.</p>
+          <p class="help">문서 비고 칸에 들어가는 문장과 값입니다. 문장은 예시로 보여 드리고, <b>고치기</b>를 눌러야 열립니다.</p>
 
-          <h3 class="sub-title">사물함</h3>
-          <label class="label mt-2">비고 첫 줄 <span class="opt">대여비가 바뀐 학기에만</span>
-            <textarea name="locker_deposit_remark" data-remember rows="2" class="field">{{ default_locker_remark }}</textarea></label>
-          <div class="tpl" data-tpl="환불" data-label="환불 문장"></div>
-          <p class="label mt-4">환불 사유 바꿔 적기</p>
-          <p class="help">환불자 목록의 사유 칸에 적힌 말을 비고에 쓸 말로 바꿉니다. 목록에 없는 사유는 그대로 씁니다.</p>
-          <table class="rules-table" id="reason-table">
-            <thead><tr><th>환불자 목록에 적힌 말</th><th>비고에 쓸 말</th><th class="col-del"></th></tr></thead>
-            <tbody id="reason-rows"></tbody>
-          </table>
-          <button type="button" id="reason-add-btn" class="linkbtn mt-2">줄 추가</button>
+          <section class="opt-group" aria-labelledby="g-locker">
+            <h3 class="opt-group-title" id="g-locker"><span class="opt-group-mark">가</span>사물함 배부 사업</h3>
+            <div class="opt-item">
+              <div class="opt-item-head"><span class="opt-item-name">비고 첫 줄</span></div>
+              <textarea name="locker_deposit_remark" data-remember rows="2" class="field" aria-label="사물함 비고 첫 줄">{{ default_locker_remark }}</textarea>
+              <p class="help">입금·환불 쪽 비고 맨 윗줄. 대여비가 바뀐 학기에만 고칩니다.</p>
+            </div>
+            <div class="tpl opt-item" data-tpl="환불" data-label="환불 문장"></div>
+            <div class="opt-item">
+              <div class="opt-item-head"><span class="opt-item-name">환불 사유 바꿔 적기</span></div>
+              <p class="help">환불자 목록의 사유를 비고에 쓸 말로 바꿉니다. 여기 없는 사유는 목록에 적힌 그대로 씁니다.</p>
+              <table class="rules-table" id="reason-table">
+                <thead><tr><th>환불자 목록에 적힌 말</th><th>비고에 쓸 말</th><th class="col-del"></th></tr></thead>
+                <tbody id="reason-rows"></tbody>
+              </table>
+              <button type="button" id="reason-add-btn" class="linkbtn mt-2">줄 추가</button>
+            </div>
+          </section>
 
-          <h3 class="sub-title">물품 대여</h3>
-          <div class="tpl" data-tpl="대상" data-label="이름 부분"></div>
-          <div class="tpl" data-tpl="대상_대납" data-label="이름 부분 (다른 사람이 대신 냈을 때)"></div>
-          <div class="tpl" data-tpl="연체" data-label="연체"></div>
-          <div class="tpl" data-tpl="연체_일수불명" data-label="연체 (일수를 못 정했을 때)"></div>
-          <div class="tpl" data-tpl="필름값" data-label="필름값"></div>
-          <div class="tpl" data-tpl="손망실비" data-label="손망실비"></div>
-          <div class="tpl" data-tpl="감면" data-label="감면"></div>
-          <div class="tpl" data-tpl="감면_일수불명" data-label="감면 (일수를 못 정했을 때)"></div>
-          <label class="label mt-4">늘 확인할 물품 <span class="opt">쉼표로 구분</span>
-            <input id="watch-items" class="field" placeholder="예: 삼각대, 돗자리, 보드게임"></label>
-          <p class="help">규정 단가와 실제로 받은 금액이 자주 다른 물품입니다. 연체일수를 계산해도 검수목록 '확인할 것'에 올립니다.</p>
-          <label class="label mt-4">폴라로이드 필름 1장 가격(원)
-            <input name="film_fee_per_sheet" data-remember inputmode="numeric" value="{{ default_film_fee }}" class="field" style="max-width:180px"></label>
-          <p class="help">필름값 ÷ 이 가격 = 필름 장수</p>
-          <label class="label mt-4">증빙서류 칸 그림
-            <input type="file" name="rental_evidence" accept=".png,.jpg,.jpeg,image/png,image/jpeg" class="field"></label>
-          <p class="help">물품 대여 사업 수입 쪽 증빙서류 칸에 들어갈 그림입니다. 비워 두면 기본 그림(제39대 물품 대여 사업 안내사항)이 들어갑니다.</p>
+          <section class="opt-group" aria-labelledby="g-rental">
+            <h3 class="opt-group-title" id="g-rental"><span class="opt-group-mark">나</span>물품 대여 사업</h3>
+            <div class="opt-item">
+              <div class="opt-item-head"><span class="opt-item-name">증빙서류 칸 그림</span></div>
+              <div class="evi">
+                <img id="evi-thumb" src="/default-evidence.jpg" alt="증빙서류 칸에 들어갈 그림 미리보기" class="evi-thumb">
+                <div class="evi-info">
+                  <p><span class="muted small">선택된 그림</span><br><b id="evi-name">물품 대여 사업 안내사항 (제39대, 기본)</b></p>
+                  <p class="row mt-2">
+                    <button type="button" id="evi-change-btn" class="btn btn-line">다른 그림으로 바꾸기</button>
+                    <button type="button" id="evi-reset-btn" class="linkbtn linkbtn-muted hidden">기본 그림으로 되돌리기</button>
+                  </p>
+                  <p class="help">수입 쪽 증빙서류 칸에 들어갑니다. 안내사항 종이가 바뀐 학기에만 바꾸세요.</p>
+                </div>
+              </div>
+              <input type="file" id="rental_evidence" name="rental_evidence" accept=".png,.jpg,.jpeg,image/png,image/jpeg" class="hidden">
+            </div>
+            <div class="opt-item">
+              <div class="opt-item-head"><span class="opt-item-name">폴라로이드 필름 1장 가격</span></div>
+              <p class="row"><input name="film_fee_per_sheet" data-remember inputmode="numeric" value="{{ default_film_fee }}" class="field" style="max-width:140px" aria-label="필름 1장 가격"><span>원</span></p>
+              <p class="help">필름값 ÷ 이 가격 = 필름 장수</p>
+            </div>
+            <div class="opt-item">
+              <div class="opt-item-head"><span class="opt-item-name">늘 확인할 물품</span></div>
+              <input id="watch-items" class="field" placeholder="예: 삼각대, 돗자리, 보드게임" aria-label="늘 확인할 물품">
+              <p class="help">쉼표로 구분합니다. 규정 단가와 실제로 받은 금액이 자주 다른 물품이라, 연체일수를 계산해도 '확인할 것'에 올립니다.</p>
+            </div>
+            <p class="opt-subhead">비고 문장</p>
+            <div class="tpl opt-item" data-tpl="대상" data-label="이름 부분"></div>
+            <div class="tpl opt-item" data-tpl="대상_대납" data-label="이름 부분 · 다른 사람이 대신 냈을 때"></div>
+            <div class="tpl opt-item" data-tpl="연체" data-label="연체"></div>
+            <div class="tpl opt-item" data-tpl="연체_일수불명" data-label="연체 · 일수를 못 정했을 때"></div>
+            <div class="tpl opt-item" data-tpl="감면" data-label="감면"></div>
+            <div class="tpl opt-item" data-tpl="감면_일수불명" data-label="감면 · 일수를 못 정했을 때"></div>
+            <div class="tpl opt-item" data-tpl="필름값" data-label="필름값"></div>
+            <div class="tpl opt-item" data-tpl="손망실비" data-label="손망실비"></div>
+          </section>
 
-          <p class="row between mt-6">
+          <p class="row between opt-foot">
             <span id="friendly-status" class="small muted" role="status"></span>
             <button type="button" id="friendly-reset-btn" class="linkbtn linkbtn-muted">비고 문장을 기본값으로 되돌리기</button>
           </p>
@@ -402,11 +428,21 @@
     document.querySelectorAll('.tpl').forEach(box => {
       const name = box.dataset.tpl;
       const chips = (TEMPLATE_FIELDS[name] || []).map(f => `<button type="button" class="chip-btn" data-ins="${f}" title="${FIELD_HELP[f] || f} 자리 넣기">{${f}}</button>`).join('');
-      box.innerHTML = `<p class="label mt-4">${box.dataset.label}</p>
-        <textarea class="field tpl-text" rows="2"></textarea>
-        <p class="tpl-chips">누르면 들어가는 자리: ${chips}</p>
-        <p class="tpl-example"><span class="muted">예시</span> <span class="tpl-out"></span></p>
+      box.innerHTML = `<div class="opt-item-head"><span class="opt-item-name">${box.dataset.label}</span>
+          <button type="button" class="linkbtn tpl-toggle" aria-expanded="false">고치기</button></div>
+        <p class="tpl-example tpl-out"></p>
+        <div class="tpl-edit hidden">
+          <textarea class="field tpl-text" rows="2" aria-label="${box.dataset.label} 문장"></textarea>
+          <p class="tpl-chips">누르면 들어가는 자리 ${chips}</p>
+        </div>
         <p class="tpl-error hidden"></p>`;
+      const toggle = box.querySelector('.tpl-toggle');
+      toggle.addEventListener('click', () => {
+        const edit = box.querySelector('.tpl-edit'), open = edit.classList.toggle('hidden') === false;
+        toggle.textContent = open ? '닫기' : '고치기';
+        toggle.setAttribute('aria-expanded', String(open));
+        if (open) box.querySelector('textarea').focus();
+      });
       const ta = box.querySelector('textarea');
       box.querySelectorAll('.chip-btn').forEach(b => b.addEventListener('click', () => {
         const at = ta.selectionStart ?? ta.value.length, ins = `{${b.dataset.ins}}`;
@@ -421,6 +457,10 @@
       document.querySelectorAll('.tpl').forEach(box => {
         const name = box.dataset.tpl, bad = badFields(name), err = box.querySelector('.tpl-error');
         box.querySelector('.tpl-out').textContent = sampleText(name);
+        if (!tplValue(name).trim() || bad.length) {
+          box.querySelector('.tpl-edit').classList.remove('hidden');
+          box.querySelector('.tpl-toggle').textContent = '닫기';
+        }
         if (!tplValue(name).trim()) {
           ok = false;
           err.textContent = '문장을 비워 둘 수 없습니다. 기본값으로 되돌리려면 맨 아래 단추를 누르세요.';
@@ -485,6 +525,26 @@
       byName('rules_json').value = DEFAULT_RULES_TEXT; validateRules(); loadFriendly();
     });
     byName('rules_json').addEventListener('change', () => { if (validateRules()) loadFriendly(); });
+
+    // ── 증빙서류 칸 그림: 기본 그림이 선택된 상태, 바꿀 때만 고른다 ──
+    const eviInput = document.getElementById('rental_evidence');
+    const eviThumb = document.getElementById('evi-thumb'), eviName = document.getElementById('evi-name');
+    const eviReset = document.getElementById('evi-reset-btn');
+    const EVI_DEFAULT_NAME = eviName.textContent;
+    document.getElementById('evi-change-btn').addEventListener('click', () => eviInput.click());
+    eviInput.addEventListener('change', () => {
+      const f = eviInput.files[0];
+      if (!f) return;
+      eviThumb.src = URL.createObjectURL(f);
+      eviName.textContent = f.name;
+      eviReset.classList.remove('hidden');
+    });
+    eviReset.addEventListener('click', () => {
+      eviInput.value = '';
+      eviThumb.src = '/default-evidence.jpg';
+      eviName.textContent = EVI_DEFAULT_NAME;
+      eviReset.classList.add('hidden');
+    });
 
     // ── 설정 파일 ──
     const settingsStatus = document.getElementById('settings-status');
