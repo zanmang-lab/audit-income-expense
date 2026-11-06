@@ -21,12 +21,14 @@ from src.parse_ledger import load_ledger_workbook, parse_ledger_workbook
 from src.pipeline import (
     EngineResult,
     ReviewItem,
+    export_combined_hwpx,
     export_hwpx_files,
     format_review_report,
+    page_labels,
+    review_rows,
     run_engine,
 )
 from src.remarks import parse_overdue_sheet, parse_refund_sheet
-from src.semester_config import semester_config_to_dict
 from src.sheet_reader import InputIssue
 from src.template_layout import TemplateLayout, analyze_template
 from web.errors import run_stage
@@ -51,6 +53,7 @@ class PipelineResult:
     dropped_sensitive_columns: list[str]
     review_items: list[ReviewItem]
     input_issues: list[InputIssue] = field(default_factory=list)
+    review_rows: list[dict] = field(default_factory=list)  # 꼭 고칠 것 → 확인할 것 → 참고 순서
 
 
 @dataclass
@@ -108,7 +111,7 @@ class PreparedRun:
             for name in EDITABLE_FIELDS:
                 if name in fields:
                     lines.append(InputIssue(
-                        "직접수정", f"사업{no} / {idx}페이지 '{name}'을(를) 미리보기에서 고쳤습니다.", advisory=True))
+                        "직접수정", f"사업{no} {idx}쪽 '{name}'을(를) 미리보기에서 고쳤습니다.", advisory=True))
         return lines
 
 
@@ -222,6 +225,66 @@ def _rental_evidence(upload: UploadConfig):
     return upload.rental_evidence
 
 
+README_IN_ZIP = """수입지출내역서 자동 작성 결과
+
+· ○○_통합본.hwpx      모든 사업을 한 파일로 이은 초안. 보통 이 파일을 열어 검수합니다.
+· 사업별 파일/         같은 내용을 사업마다 나눈 파일(필요할 때만).
+· 검수목록.xlsx        고치거나 확인할 곳 체크리스트. '꼭 고칠 것'부터 보세요.
+· 검수목록.txt         위와 같은 내용(메모장용).
+· 설정.json            이번에 쓴 입력값. 열어 볼 필요 없습니다.
+
+★ 이 zip 파일을 지우지 말고 학생회 드라이브 등에 그대로 보관해 주세요.
+  다음 학기 담당자가 프로그램 첫 화면 '지난 학기 결과 zip 올리기'에 이 zip을 올리면
+  사업개요·연체료 규정 등이 이번 학기 값으로 채워집니다.
+"""
+
+
+def review_checklist_xlsx(rows: list[dict], semester_label: str) -> bytes:
+    """검수목록 체크리스트(엑셀). 단계 순서, 확인 칸은 비워 둔다."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+    from src.review_levels import CHECK, MUST, NOTE
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "검수목록"
+    ws.append(["확인", "단계", "사업", "쪽", "문서 사업번호", "대상", "내용"])
+    for r in rows:
+        ws.append(["", r["단계"], r["사업"], r["쪽"], r["문서표기"], r["대상"], r["내용"]])
+    fills = {MUST: "F8CBAD", CHECK: "DDEBF7", NOTE: "EDEDED"}
+    for c in ws[1]:
+        c.font = Font(bold=True)
+        c.fill = PatternFill("solid", fgColor="D9D9D9")
+        c.alignment = Alignment(horizontal="center")
+    for row in ws.iter_rows(min_row=2):
+        row[1].fill = PatternFill("solid", fgColor=fills.get(row[1].value, "FFFFFF"))
+        row[0].alignment = Alignment(horizontal="center", vertical="top")
+        for c in row[1:]:
+            c.alignment = Alignment(wrap_text=True, vertical="top")
+    for col, w in {"A": 6, "B": 11, "C": 6, "D": 5, "E": 13, "F": 16, "G": 90}.items():
+        ws.column_dimensions[col].width = w
+    ws.freeze_panes = "A2"
+    ws.auto_filter.ref = f"A1:G{max(ws.max_row, 2)}"
+    help_ws = wb.create_sheet("보는 법")
+    for line in [
+        f"{semester_label} 수입지출내역서 검수목록",
+        "",
+        "꼭 고칠 것: 문서에서 빠졌거나 비어 있거나 틀렸을 수 있는 곳 — 확인하고 고치세요.",
+        "확인할 것: 프로그램이 계산하거나 바꿔 적은 곳 — 맞는지 한 번 보세요.",
+        "참고: 알고만 있으면 되는 것.",
+        "",
+        "쪽은 사업별 파일 기준입니다. 통합본에서는 '문서 사업번호'(예: 3-8~10)로 찾으세요.",
+        "확인한 줄의 '확인' 칸에 O를 적으며 진행하면 됩니다. 단계 칸 필터로 골라 볼 수 있습니다.",
+    ]:
+        help_ws.append([line])
+    help_ws.column_dimensions["A"].width = 100
+    from io import BytesIO as _B
+
+    buf = _B()
+    wb.save(buf)
+    return buf.getvalue()
+
+
 def build_run(prep: PreparedRun) -> PipelineResult:
     """미리보기 수정 내용을 반영해 결과 zip을 만든다. 여러 번 불러도 된다(매번 새 zip)."""
     upload = prep.upload
@@ -246,33 +309,43 @@ def build_run(prep: PreparedRun) -> PipelineResult:
             evidence_image=_rental_evidence(upload),
         ),
     )
-    issues += [InputIssue("양식", p) for p in problems]
+    combined_name = f"{semester.label}_통합본.hwpx"
+    combined = run_stage(
+        "통합본 생성",
+        lambda: export_combined_hwpx(
+            result,
+            template_path=str(upload.template_hwpx_path),
+            out_path=str(output_dir / combined_name),
+            author=semester.author,
+            layout=prep.layout,
+            evidence_image=_rental_evidence(upload),
+        ),
+    )
+    issues += [InputIssue("양식", p) for p in dict.fromkeys(problems)]
     issues += prep.edit_log()
 
-    review_text = format_review_report(result.review_items, issues)
-    rules_extract = json.dumps(
-        semester_config_to_dict(semester)["overdue_rules"], ensure_ascii=False, indent=2
-    )
-
-    zip_doc_paths = hwpx_paths
+    labels = page_labels(result)
+    review_text = format_review_report(result.review_items, issues, labels)
+    rows = review_rows(result.review_items, issues, labels)
+    review_xlsx = review_checklist_xlsx(rows, semester.label)
 
     zip_path = build_dir / "수입지출내역서_결과.zip"
 
     def _build_zip() -> None:
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("읽어주세요.txt", README_IN_ZIP)
+            if combined:
+                zf.write(combined, Path(combined).name)
+            for hp in hwpx_paths:
+                zf.write(hp, f"사업별 파일/{Path(hp).name}")
+            zf.writestr("검수목록.xlsx", review_xlsx)
             zf.writestr("검수목록.txt", review_text)
-            zf.writestr("연체료규정_추출.json", rules_extract)
-            if upload.business_overview.strip():
-                zf.writestr("사업개요.txt", upload.business_overview)
-            zf.writestr("연체료규정.txt", upload.overdue_rules_text)
             if upload.settings_json:
                 zf.writestr("설정.json", upload.settings_json)
-            for hp in zip_doc_paths:
-                zf.write(hp, Path(hp).name)
 
     run_stage("결과 zip 패키징", _build_zip)
 
-    for hp in hwpx_paths:
+    for hp in [*hwpx_paths, *([combined] if combined else [])]:
         Path(hp).unlink(missing_ok=True)
     try:
         output_dir.rmdir()
@@ -291,6 +364,7 @@ def build_run(prep: PreparedRun) -> PipelineResult:
         dropped_sensitive_columns=[],
         review_items=result.review_items,
         input_issues=issues,
+        review_rows=rows,
     )
 
 

@@ -182,8 +182,15 @@ def _render_error(request: Request, detail: str, status_code: int) -> HTMLRespon
     )
 
 
+def _is_fetch(request: Request) -> bool:
+    return request.headers.get("x-requested-with") == "fetch"
+
+
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException) -> HTMLResponse:
+    if _is_fetch(request):
+        ctx = _error_page_context(str(exc.detail), exc.status_code)
+        return JSONResponse({"title": ctx["error_title"], "detail": str(exc.detail)}, status_code=exc.status_code)
     if _wants_html(request):
         return _render_error(request, str(exc.detail), exc.status_code)
     return HTMLResponse(content=str(exc.detail), status_code=exc.status_code)
@@ -393,6 +400,8 @@ async def generate(
         masking_message=masking_message,
         rules_summary=rules_summary,
     )
+    if _is_fetch(request):
+        return JSONResponse({"preview_url": f"/preview/{job_id}"})
     return _render_preview(request, job_id)
 
 
@@ -449,10 +458,10 @@ async def build(request: Request, preview_id: str) -> HTMLResponse:
     job.builds.append(download_id)
 
     s = result.summary
-    required_items = [item for item in result.review_items if not item.advisory]
-    advisory_items = [item for item in result.review_items if item.advisory and not item.auto]
-    auto_items = [i.format_line() for i in result.input_issues if i.auto] + [
-        item.format_line() for item in result.review_items if item.auto
+    from src.review_levels import LEVEL_HELP, LEVELS
+    review_groups = [
+        {"level": lv, "help": LEVEL_HELP[lv], "lines": [r["줄"].split("] ", 1)[-1] for r in result.review_rows if r["단계"] == lv]}
+        for lv in LEVELS
     ]
     return templates.TemplateResponse(
         request,
@@ -466,14 +475,8 @@ async def build(request: Request, preview_id: str) -> HTMLResponse:
             "business_count": s.business_count,
             "page_count": s.page_count,
             "hwpx_count": s.hwpx_count,
-            "required_count": len(required_items),
-            "advisory_count": len(advisory_items),
             "rules_summary": job.rules_summary,
-            "review_required": [item.format_line() for item in required_items],
-            "review_advisory": [item.format_line() for item in advisory_items],
-            "input_required": [i.format_line() for i in result.input_issues if not i.advisory],
-            "input_advisory": [i.format_line() for i in result.input_issues if i.advisory and not i.auto],
-            "auto_items": auto_items,
+            "review_groups": review_groups,
         },
     )
 

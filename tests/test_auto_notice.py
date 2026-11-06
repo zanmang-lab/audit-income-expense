@@ -58,7 +58,7 @@ def test_locker_pages_not_split_by_name():
     assert len(res.businesses[1].pages) == 1
     assert len(res.businesses[4].pages) == 2
     autos = [r for r in res.review_items if r.auto and r.business_no == 4]
-    assert autos and "거래처" in autos[0].reason and autos[0].format_line().startswith("[자동처리] (사업4/2페이지)")
+    assert autos and "거래처" in autos[0].reason and autos[0].format_line().startswith("[확인할 것] 사업4 2쪽 · 가게B:")
 
 
 # ── 환불 수수료 분리 ────────────────────────────────────────
@@ -148,9 +148,9 @@ def test_report_groups_sections():
         ReviewItem(1, 2, "", "수수료 확인", advisory=True),
     ]
     text = format_review_report(items, [InputIssue("장부", "날짜 못 읽음", row=3)])
-    order = [text.index(h) for h in ("■ 입력확인", "■ 검수필요", "■ 자동처리", "■ 참고")]
+    order = [text.index(h) for h in ("■ 꼭 고칠 것", "■ 확인할 것", "■ 참고")]
     assert order == sorted(order)
-    assert "[자동처리] (사업1/1페이지) 연체 1일 계산" in text
+    assert "[확인할 것] 사업1 1쪽" in text
 
 
 def test_classification_spacing_is_removed_and_noted():
@@ -208,7 +208,7 @@ def test_ledger_business_missing_from_overview_is_reported(tmp_path):
         work_dir=tmp_path / "w",
     )
     lines = [i.format_line() for i in prep.input_issues]
-    assert any("[입력확인] 사업개요: 장부에 사업번호 7번이 있는데 사업개요에 없어" in l for l in lines)
+    assert any("[꼭 고칠 것] 사업개요: 장부에 사업번호 7번이 있는데 사업개요에 없어" in l for l in lines)
     assert any("5번" in l and "장부에 거래가 없어" in l for l in lines)
 
 

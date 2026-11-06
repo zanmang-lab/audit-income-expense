@@ -32,10 +32,17 @@ class InputIssue:
     advisory: bool = False
     auto: bool = False  # 프로그램이 바꿔 읽은 것(글자 날짜 → 날짜 등)
 
+    @property
+    def level(self) -> str:
+        from .review_levels import level_of
+        return level_of(self)
+
+    @property
+    def where(self) -> str:
+        return f"{self.source} {self.row}행" if self.row else self.source
+
     def format_line(self) -> str:
-        where = f"{self.source} {self.row}행" if self.row else self.source
-        tag = "[자동처리]" if self.auto else ("[입력확인-권장]" if self.advisory else "[입력확인]")
-        return f"{tag} {where}: {self.message}"
+        return f"[{self.level}] {self.where}: {self.message}"
 
 
 @dataclass

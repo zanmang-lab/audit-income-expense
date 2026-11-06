@@ -22,34 +22,31 @@
     <section class="mb-6">
       <h2 class="text-display font-display text-on-surface mb-2">수입지출내역서 자동 작성</h2>
       <p class="text-body-lg font-body-lg text-on-surface-variant">
-        장부·연체료 목록·환불자 목록과 양식을 올리면 사업별 수입지출내역서 <strong>초안</strong>을 만듭니다.
-        입력칸에는 기본값이 미리 들어 있습니다.
+        장부·연체료 목록·환불자 목록과 양식을 올리면 수입지출내역서 <strong>초안</strong>(통합본)을 만듭니다.
       </p>
     </section>
 
     <section class="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 mb-8">
-      <p class="text-label-md font-label-md text-on-surface mb-2">이 순서대로 하세요 <span class="where">(기본값이 미리 들어 있습니다)</span></p>
+      <p class="text-label-md font-label-md text-on-surface mb-2">이 순서대로 하세요 <span class="where">(입력칸에는 기본값이 미리 들어 있습니다)</span></p>
       <ol class="list-decimal list-inside text-body-md text-on-surface-variant space-y-1">
         <li><strong>① 학기</strong>를 고르고 책임자 성명·연락처 입력</li>
         <li><strong>② 사업개요</strong>와 <strong>③ 연체료 규정</strong>에서 이번 학기에 바뀐 것만 고치기</li>
-        <li><strong>④~⑦ 파일 4개</strong>를 올리고 <strong>생성하기</strong></li>
+        <li><strong>④~⑦ 파일 4개</strong>를 올리고 <strong>생성하기</strong> → 미리보기 확인 → 결과 zip 받기</li>
       </ol>
     </section>
 
-    <form action="/generate" method="post" enctype="multipart/form-data" class="space-y-8" id="upload-form">
+    <form action="/generate" method="post" enctype="multipart/form-data" class="space-y-8" id="upload-form" novalidate>
       {% from "includes/macros.html" import file_zone, file_zone_compact %}
 
       <!-- 지난 학기 결과 불러오기 (선택) -->
       <div class="border border-dashed border-outline-variant px-4 py-3 rounded-xl text-body-md text-on-surface-variant">
         <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span><b>지난 학기에 이 프로그램으로 만든 결과 zip</b>이 있으면</span>
+          <span class="chip chip-opt">선택 · 처음이면 건너뛰세요</span>
+          <span>지난 학기 결과 zip이 있으면</span>
           <button type="button" id="settings-load-btn" class="text-primary font-semibold underline">그 zip 올리기</button>
-          <span class="where">(선택 · 압축을 풀지 말고 그대로)</span>
         </div>
         <p class="where mt-1">
-          아래 칸(책임자 소속·직위·성명, 사업개요, 연체료 규정, 기타 문구)이 지난 학기 값으로 채워집니다. 학기는 채우지 않습니다.
-          채운 다음에는 <b>화면에 보이는 값</b>으로 문서를 만듭니다. 이번 학기에 바뀐 것만 칸에서 고치세요.
-          없으면 그냥 아래 칸에 적으면 됩니다.
+          압축을 풀지 말고 그대로 올리면 아래 칸이 지난 학기 값으로 채워집니다(학기는 빼고). 그다음에는 <b>화면에 보이는 값</b>으로 만듭니다.
         </p>
         <div class="mt-1 where"><button type="button" id="example-btn" class="underline">입력칸을 기본값으로 되돌리기</button></div>
         <input type="file" id="settings-file" accept=".zip,.json,application/zip,application/json" class="hidden">
@@ -98,7 +95,7 @@
           ② 사업개요 <span class="chip chip-req">필수</span>
         </label>
         <p class="where mt-2">
-          <b>어디를 보고</b>: 사업계획서(예산안)의 사업 목록 · <b>번호</b>: 장부 B열 <b>사업번호</b>와 같은 번호 ·
+          <b>어디를 보고</b>: 사업계획서(예산안)의 사업 목록 · <b>번호</b>: 장부 <b>사업번호</b> 열과 같은 번호 ·
           <b>형식</b>: 한 줄에 <code>번호. 사업명</code> — 사업명이 문서의 사업명 칸에 그대로 들어갑니다.
         </p>
         <p class="where mt-1">예: <code>1. 1학기 온라인 사물함 배부 사업</code> · <code>4. 봄 축제</code> · <code>98. 관리운영비</code> · <code>99. 기타</code></p>
@@ -155,7 +152,7 @@
       <!-- ⑤ 장부 -->
       <div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl">
         <label for="ledger" class="text-headline-md font-headline-md text-on-surface block mb-2">⑤ 장부 (.xlsx) <span class="chip chip-req">필수</span></label>
-        <p class="where mb-3"><b>무엇을</b>: 학복위 엑셀 장부(예: 학복위 엑셀장부 공유용). 장부의 <b>개요(G열)가 문서의 내용 칸</b>이 되니 통합본에 쓸 문구로 적어 두면 고칠 일이 줄어듭니다.</p>
+        <p class="where mb-3"><b>무엇을</b>: 학복위 엑셀 장부(예: 학복위 엑셀장부 공유용). 장부의 <b>개요 열이 문서의 내용 칸</b>이 되니 통합본에 쓸 문구로 적어 두면 고칠 일이 줄어듭니다.</p>
         {{ file_zone_compact("ledger", "ledger", ".xlsx", "table_view", "엑셀 파일을 선택하세요") }}
         {{ examples.ledger | safe }}
       </div>
@@ -224,6 +221,11 @@
         </details>
       </details>
 
+      <div id="form-error" class="hidden bg-error-container text-on-error-container border border-error rounded-xl p-4" role="alert">
+        <p class="font-bold" id="form-error-title"></p>
+        <p class="mt-1 whitespace-pre-line" id="form-error-message"></p>
+        <p class="mt-2 text-xs">올린 파일과 입력한 값은 그대로 있습니다. 고칠 것만 고친 뒤 다시 <b>생성하기</b>를 누르세요.</p>
+      </div>
       <div class="pt-2 flex flex-col items-center gap-2">
         <p id="submit-hint" class="text-body-md text-error hidden"></p>
         <button type="submit" id="submit-btn"
@@ -454,19 +456,55 @@
     validateRules();
     checkTerm();
 
-    // ── 제출 ──
-    document.getElementById('upload-form').addEventListener('submit', (e) => {
+    // ── 제출: 화면을 떠나지 않고 보낸다. 오류가 나도 올린 파일이 그대로 남는다 ──
+    const FILES = [
+      ['template', '④ 수입지출 양식', ['.hwpx']],
+      ['ledger', '⑤ 장부', ['.xlsx']],
+      ['overdue', '⑥ 연체료 목록', ['.xlsx']],
+      ['refund', '⑦ 환불자 목록', ['.xlsx']],
+    ];
+    function checkFiles() {
+      for (const [id, label, exts] of FILES) {
+        const f = document.getElementById(id).files[0];
+        if (!f) return `${label} 파일을 올려 주세요.`;
+        const name = f.name.toLowerCase();
+        if (id === 'template' && name.endsWith('.hwp'))
+          return `${label}: .hwp 파일은 읽지 못합니다. 한글에서 '파일 → 다른 이름으로 저장 → HWPX 문서(*.hwpx)'로 저장해 올려 주세요(확장자만 바꾸면 안 됩니다).`;
+        if (!exts.some(x => name.endsWith(x)))
+          return `${label}: ${exts.join(', ')} 파일만 올릴 수 있습니다. (올린 파일: ${f.name})`;
+      }
+      return '';
+    }
+    const formError = document.getElementById('form-error');
+    function showFormError(title, message) {
+      document.getElementById('form-error-title').textContent = title;
+      document.getElementById('form-error-message').textContent = message;
+      formError.classList.remove('hidden');
+      formError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    function setBusy(busy) {
+      const btn = document.getElementById('submit-btn');
+      btn.disabled = busy;
+      btn.classList.toggle('opacity-80', busy);
+      btn.classList.toggle('cursor-wait', busy);
+      document.getElementById('submit-icon').textContent = busy ? 'sync' : 'auto_fix_high';
+      document.getElementById('submit-label').textContent = busy ? '처리 중… 잠시만 기다려 주세요' : '생성하기';
+    }
+    document.getElementById('upload-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
       const hint = document.getElementById('submit-hint');
+      formError.classList.add('hidden');
       syncRules();
       let problem = '';
       if (!semInput.value) problem = '① 학기(연도·학기)를 골라 주세요.';
+      else if (!overview.value.trim()) problem = '② 사업개요를 적어 주세요.';
       else if (!validateRules()) problem = '관리자용 비고 문장 규칙의 형식이 잘못되었습니다.';
       else if (!rulesText.value.trim()) problem = '③ 연체료 규정에 1일 단가를 하나 이상 적어 주세요.';
+      else problem = checkFiles();
       if (problem) {
-        e.preventDefault();
         hint.textContent = problem;
         hint.classList.remove('hidden');
-        if (problem.includes('비고')) document.getElementById('rules-info').open = true;
+        if (problem.includes('비고 문장')) document.getElementById('rules-info').open = true;
         return;
       }
       hint.classList.add('hidden');
@@ -475,19 +513,23 @@
         remembered.forEach(el => { data[el.name] = el.value; });
         localStorage.setItem(REMEMBER_KEY, JSON.stringify(data));
       } catch (err) {}
-      const btn = document.getElementById('submit-btn');
-      btn.disabled = true;
-      btn.classList.add('opacity-80', 'cursor-wait');
-      document.getElementById('submit-icon').textContent = 'sync';
-      document.getElementById('submit-label').textContent = '처리 중… 잠시만 기다려 주세요';
+      setBusy(true);
+      try {
+        const r = await fetch('/generate', {
+          method: 'POST', body: new FormData(e.target), headers: { 'X-Requested-With': 'fetch' },
+        });
+        let data = {};
+        try { data = await r.json(); } catch (err) {}
+        if (r.ok && data.preview_url) { window.location.href = data.preview_url; return; }
+        let msg = data.detail;
+        if (Array.isArray(msg)) msg = '빠진 입력이 있습니다: ' + msg.map(d => (d.loc || []).slice(-1)[0]).join(', ');
+        showFormError(data.title || '문서를 만들지 못했습니다', msg || `서버 오류 (${r.status}). 잠시 뒤 다시 시도해 주세요.`);
+      } catch (err) {
+        showFormError('서버에 연결하지 못했습니다', '인터넷 연결을 확인하고 다시 시도해 주세요. 서버가 잠들어 있었다면 1분쯤 뒤에 다시 누르면 됩니다.');
+      }
+      setBusy(false);
     });
-    window.addEventListener('pageshow', () => {
-      const btn = document.getElementById('submit-btn');
-      btn.disabled = false;
-      btn.classList.remove('opacity-80', 'cursor-wait');
-      document.getElementById('submit-icon').textContent = 'auto_fix_high';
-      document.getElementById('submit-label').textContent = '생성하기';
-    });
+    window.addEventListener('pageshow', () => setBusy(false));
   </script>
 </body>
 </html>

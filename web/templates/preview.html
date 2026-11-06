@@ -43,17 +43,18 @@
           <p class="text-[11px] text-on-surface-variant">한 페이지 세목 {{ view.rows_per_page }}줄</p>
         </div>
         <div class="bg-surface-container-lowest border p-4 rounded-xl {% if view.required_count %}border-error{% else %}border-outline-variant{% endif %}">
-          <p class="text-label-md text-on-surface-variant">검수필요</p>
+          <p class="text-label-md text-on-surface-variant">꼭 고칠 것</p>
           <p class="text-headline-md font-headline-md {% if view.required_count %}text-error{% else %}text-primary{% endif %}">{{ view.required_count }}건</p>
         </div>
         <div class="bg-surface-container-lowest border p-4 rounded-xl {% if view.auto_count %}border-[#1D4ED8]{% else %}border-outline-variant{% endif %}">
-          <p class="text-label-md text-on-surface-variant">자동처리</p>
+          <p class="text-label-md text-on-surface-variant">확인할 것</p>
           <p class="text-headline-md font-headline-md {% if view.auto_count %}text-[#1D4ED8]{% else %}text-primary{% endif %}">{{ view.auto_count }}건</p>
           <p class="text-[11px] text-on-surface-variant">프로그램이 계산·변환</p>
         </div>
-        <div class="bg-surface-container-lowest border p-4 rounded-xl {% if view.input_required %}border-error{% else %}border-outline-variant{% endif %}">
-          <p class="text-label-md text-on-surface-variant">입력확인</p>
-          <p class="text-headline-md font-headline-md {% if view.input_required %}text-error{% else %}text-primary{% endif %}">{{ view.input_required|length }}건</p>
+        <div class="bg-surface-container-lowest border border-outline-variant p-4 rounded-xl">
+          <p class="text-label-md text-on-surface-variant">참고</p>
+          <p class="text-headline-md font-headline-md text-on-surface-variant">{{ view.advisory_count }}건</p>
+          <p class="text-[11px] text-on-surface-variant">알고만 있으면 됨</p>
         </div>
       </section>
 
@@ -61,28 +62,27 @@
         <span class="material-symbols-outlined text-[18px]">privacy_tip</span>{{ masking_message }}
       </p>
 
-      {% if view.auto_count %}
-      <p class="text-body-md bg-[#EFF6FF] border border-[#BFDBFE] text-[#1E3A8A] rounded-lg p-3">
-        <strong>자동처리</strong>는 프로그램이 장부·목록을 바탕으로 계산하거나 바꿔 적은 곳입니다(연체일수, 대납 연결, 수수료 분리, 쪽 나눔 등).
-        틀릴 수 있으니 파란 표시가 있는 페이지를 한 번씩 확인해 주세요.
+      <p class="text-body-md bg-surface-container-low border border-outline-variant rounded-lg p-3">
+        <strong class="text-error">꼭 고칠 것</strong>: 문서에서 빠졌거나 비어 있거나 틀렸을 수 있는 곳 ·
+        <strong class="text-[#1E40AF]">확인할 것</strong>: 프로그램이 계산하거나 바꿔 적은 곳(연체일수, 대납 연결, 수수료 분리, 쪽 나눔 등) — 맞는지 한 번 보기 ·
+        <strong>참고</strong>: 알고만 있으면 되는 것
       </p>
-      {% endif %}
 
       {% if view.input_required or view.input_advisory or view.input_auto %}
       <section class="space-y-3">
         <h3 class="text-headline-md font-headline-md">입력 파일 확인</h3>
         {% if view.input_required %}
-        <p class="text-body-md text-on-surface-variant"><strong>입력확인</strong> 항목은 결과 문서에 빠져 있습니다. 엑셀을 고친 뒤 다시 올려 주세요.</p>
+        <p class="text-body-md text-on-surface-variant">빨간 <strong>꼭 고칠 것</strong>이 붙은 엑셀 행은 결과 문서에서 빠져 있습니다. 엑셀을 고친 뒤 다시 올려 주세요.</p>
         {% endif %}
         {% for item in view.input_required %}
         <div class="bg-white border border-error rounded-lg p-3 flex items-start gap-3">
-          <span class="bg-error text-on-error px-2 py-0.5 rounded text-label-md whitespace-nowrap shrink-0">입력확인</span>
+          <span class="bg-error text-on-error px-2 py-0.5 rounded text-label-md whitespace-nowrap shrink-0">꼭 고칠 것</span>
           <p class="text-body-md">{{ item }}</p>
         </div>
         {% endfor %}
         {% for item in view.input_auto %}
         <div class="bg-white border border-[#BFDBFE] rounded-lg p-3 flex items-start gap-3">
-          <span class="bg-[#DBEAFE] text-[#1E40AF] px-2 py-0.5 rounded text-label-md whitespace-nowrap shrink-0">자동처리</span>
+          <span class="bg-[#DBEAFE] text-[#1E40AF] px-2 py-0.5 rounded text-label-md whitespace-nowrap shrink-0">확인할 것</span>
           <p class="text-body-md">{{ item }}</p>
         </div>
         {% endfor %}
@@ -100,7 +100,7 @@
           <h3 class="text-headline-md font-headline-md">페이지별 내용</h3>
           <label class="flex items-center gap-2 text-body-md cursor-pointer select-none">
             <input type="checkbox" id="only-review" class="rounded">
-            검수필요·자동처리 페이지만 보기
+            꼭 고칠 것·확인할 것이 있는 쪽만 보기
           </label>
         </div>
 
@@ -111,8 +111,8 @@
             <span class="text-headline-md font-headline-md">{{ biz.business_no }}. {{ biz.name or "(사업명 없음)" }}</span>
             <span class="flex gap-2 text-xs">
               <span class="px-2 py-0.5 rounded-full bg-surface-container-high">{{ biz.pages|length }}쪽</span>
-              {% if biz.review_count %}<span class="px-2 py-0.5 rounded-full bg-error-container text-on-error-container">검수필요 {{ biz.review_count }}</span>{% endif %}
-              {% if biz.auto_count %}<span class="px-2 py-0.5 rounded-full bg-[#DBEAFE] text-[#1E40AF]">자동처리 {{ biz.auto_count }}</span>{% endif %}
+              {% if biz.review_count %}<span class="px-2 py-0.5 rounded-full bg-error-container text-on-error-container">꼭 고칠 것 {{ biz.review_count }}</span>{% endif %}
+              {% if biz.auto_count %}<span class="px-2 py-0.5 rounded-full bg-[#DBEAFE] text-[#1E40AF]">확인할 것 {{ biz.auto_count }}</span>{% endif %}
             </span>
           </summary>
           <div class="px-4 pb-4 space-y-5">
@@ -130,7 +130,7 @@
               <p class="text-body-md text-error flex items-start gap-2"><span class="material-symbols-outlined text-[18px]">priority_high</span>{{ r }}</p>
               {% endfor %}
               {% for a in page.auto %}
-              <p class="text-xs text-[#1E40AF] flex items-start gap-2"><span class="shrink-0 px-1.5 rounded bg-[#DBEAFE]">자동처리</span>{{ a }}</p>
+              <p class="text-xs text-[#1E40AF] flex items-start gap-2"><span class="shrink-0 px-1.5 rounded bg-[#DBEAFE]">확인할 것</span>{{ a }}</p>
               {% endfor %}
               {% for a in page.advisory %}
               <p class="text-xs text-amber-800 flex items-start gap-2"><span class="material-symbols-outlined text-[16px]">info</span>{{ a }}</p>
@@ -177,7 +177,7 @@
 
   <div class="fixed bottom-0 inset-x-0 bg-surface-container-lowest border-t border-outline-variant px-4 py-3">
     <div class="max-w-[960px] mx-auto flex justify-between items-center gap-3 flex-wrap">
-      <p class="text-body-md text-on-surface-variant">고친 칸 <strong id="edit-count">{{ view.edit_count }}</strong>개 · 고친 내용은 검수목록에 [직접수정]으로 남습니다.</p>
+      <p class="text-body-md text-on-surface-variant">고친 칸 <strong id="edit-count">{{ view.edit_count }}</strong>개 · 고친 내용은 검수목록 '참고'에 남습니다.</p>
       <button type="submit" form="build-form" id="build-btn"
         class="px-8 py-3 bg-primary text-on-primary rounded-full text-headline-md font-headline-md flex items-center gap-2 hover:bg-on-primary-fixed-variant">
         <span class="material-symbols-outlined">description</span>

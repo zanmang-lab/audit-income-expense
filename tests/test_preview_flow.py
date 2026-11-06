@@ -133,8 +133,8 @@ def test_edits_are_applied_logged_and_kept(client):
     doc1 = [n for n in z.namelist() if n.endswith(".hwpx") and "_1_" in n][0]
     assert read_cells(z.read(doc1))[0][(4, 3)] == "사물함 대여비 입금"
     review = z.read("검수목록.txt").decode()
-    assert "[입력확인-권장] 직접수정: 사업2 / 1페이지 '비고'" in review
-    assert "사업1 / 1페이지 '내용'" in review
+    assert "[참고] 직접수정: 사업2 1쪽 '비고'" in review
+    assert "사업1 1쪽 '내용'" in review
 
     # 미리보기로 돌아가면 고친 값이 남아 있고, 다시 원래대로 만들 수도 있다
     back = client.get(f"/preview/{pid}").text
@@ -173,3 +173,39 @@ def test_bad_template_is_friendly_400(client):
     text = html.unescape(r.text)
     assert "'비고' 칸을 찾지 못했습니다" in text
     assert "위치:" not in text
+
+
+def test_fetch_submit_returns_preview_url_and_json_errors(client):
+    # 화면을 떠나지 않고 보내는 방식: 성공하면 미리보기 주소, 실패하면 제목·내용을 JSON으로(올린 파일 유지용)
+    files = {
+        "template": ("t.hwpx", build_hwpx(standard_cells())),
+        "ledger": ("l.xlsx", _xlsx([["날짜", "사업번호", "기재내용", "수입", "지출"], ["2026-03-10", 1, "가", 4000, 0]])),
+        "overdue": ("o.xlsx", _xlsx([["대여물품", "성명", "연체료"]])),
+        "refund": ("r.xlsx", _xlsx([["이름", "사유"]])),
+    }
+    data = {"business_overview": "1. 사물함 배부 사업", "overdue_rules_text": "1DAY ₩2,000: 그 외 물품"}
+    h = {"X-Requested-With": "fetch"}
+    r = client.post("/generate", files=files, data=data, headers=h)
+    assert r.status_code == 200 and r.json()["preview_url"].startswith("/preview/")
+    bad = dict(files, ledger=("l.xls", b"not xlsx"))
+    r = client.post("/generate", files=bad, data=data, headers=h)
+    assert r.status_code == 400 and r.json()["title"] and ".xlsx" in r.json()["detail"]
+
+
+def test_result_zip_has_combined_file_checklist_and_no_extras(client):
+    import openpyxl
+    _, pid = _generate(client)
+    r = client.post(f"/build/{pid}", data={})
+    assert "그대로 보관" in r.text and "꼭 고칠 것" in r.text
+    z = _zip(client, r.text)
+    names = z.namelist()
+    combined = [n for n in names if n.endswith("_통합본.hwpx")]
+    assert len(combined) == 1 and "/" not in combined[0]
+    assert len(read_cells(z.read(combined[0]))) == 2  # 사업1 1쪽 + 사업2 1쪽
+    assert any(n.startswith("사업별 파일/") for n in names)
+    assert {"검수목록.xlsx", "검수목록.txt", "읽어주세요.txt"} <= set(names)
+    assert not {"연체료규정_추출.json", "사업개요.txt", "연체료규정.txt"} & set(names)
+    ws = openpyxl.load_workbook(io.BytesIO(z.read("검수목록.xlsx"))).active
+    assert [c.value for c in ws[1]] == ["확인", "단계", "사업", "쪽", "문서 사업번호", "대상", "내용"]
+    levels = [row[1] for row in ws.iter_rows(min_row=2, values_only=True)]
+    assert levels and levels == sorted(levels, key=["꼭 고칠 것", "확인할 것", "참고"].index)

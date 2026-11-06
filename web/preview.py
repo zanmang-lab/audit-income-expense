@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Mapping
 
+from src.review_levels import CHECK, MUST, NOTE
 from web.runner import EDITABLE_FIELDS, PreparedRun
 
 # 폼 이름에는 영문을 쓴다: e-{사업번호}-{페이지}-{remark|class|content}
@@ -98,13 +99,13 @@ def build_preview_view(prep: PreparedRun) -> PreviewView:
 
     return PreviewView(
         businesses=businesses,
-        input_required=[i.format_line() for i in prep.input_issues if not i.advisory],
-        input_advisory=[i.format_line() for i in prep.input_issues if i.advisory and not i.auto],
-        input_auto=[i.format_line() for i in prep.input_issues if i.auto],
+        input_required=[f"{i.where}: {i.message}" for i in prep.input_issues if i.level == MUST],
+        input_advisory=[f"{i.where}: {i.message}" for i in prep.input_issues if i.level == NOTE],
+        input_auto=[f"{i.where}: {i.message}" for i in prep.input_issues if i.level == CHECK],
         page_count=prep.page_count,
-        required_count=sum(1 for i in prep.result.review_items if not i.advisory),
-        advisory_count=sum(1 for i in prep.result.review_items if i.advisory and not i.auto),
-        auto_count=sum(1 for i in prep.result.review_items if i.auto) + sum(1 for i in prep.input_issues if i.auto),
+        required_count=sum(1 for i in [*prep.result.review_items, *prep.input_issues] if i.level == MUST),
+        advisory_count=sum(1 for i in [*prep.result.review_items, *prep.input_issues] if i.level == NOTE),
+        auto_count=sum(1 for i in [*prep.result.review_items, *prep.input_issues] if i.level == CHECK),
         edit_count=sum(len(v) for v in prep.edits.values()),
         rows_per_page=prep.layout.rows_per_page,
     )

@@ -137,7 +137,7 @@ def test_ledger_reports_rows_it_cannot_use():
     required = [i for i in issues if not i.advisory]
     advisory = [i for i in issues if i.advisory and not i.auto]
     auto = [i for i in issues if i.auto]
-    assert len(auto) == 1 and "글자로 적힌 날짜" in auto[0].message and auto[0].format_line().startswith("[자동처리]")
+    assert len(auto) == 1 and "글자로 적힌 날짜" in auto[0].message and auto[0].format_line().startswith("[확인할 것]")
     assert [i.row for i in required] == [3, 4, 5, 6, 7]
     assert "날짜를 읽지 못해" in required[0].message
     assert "음수" in required[1].message
@@ -145,7 +145,7 @@ def test_ledger_reports_rows_it_cannot_use():
     assert "숫자로 읽지 못해" in required[3].message
     assert "사업번호를 읽지 못해" in required[4].message
     assert [i.row for i in advisory] == [8]
-    assert required[0].format_line().startswith("[입력확인] 장부 3행:")
+    assert required[0].format_line().startswith("[꼭 고칠 것] 장부 3행:")
 
 
 def test_ledger_missing_required_column_explains():
