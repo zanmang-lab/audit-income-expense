@@ -329,32 +329,6 @@ def run_engine(
     return EngineResult(businesses=businesses, review_items=all_reviews)
 
 
-def result_to_preview_dict(result: EngineResult) -> dict[str, Any]:
-    preview: dict[str, Any] = {}
-    for business_no, biz in sorted(result.businesses.items()):
-        preview[str(business_no)] = {
-            "사업명": biz.business_name,
-            "페이지": [
-                {
-                    "사업번호": page.business_no_label,
-                    "사업명": page.business_name,
-                    "날짜": page.date,
-                    "수입/지출": page.income_expense,
-                    "구분": page.classification,
-                    "내용": page.content,
-                    "세목": page.items,
-                    "수량": page.quantities,
-                    "단가": page.unit_prices,
-                    "총액": page.total_amount,
-                    "증빙서류": page.evidence,
-                    "비고": page.remark,
-                }
-                for page in biz.pages
-            ],
-        }
-    return preview
-
-
 REPORT_NOTE = (
     "※ 세목은 장부 기재내용, 수량은 1, 단가는 장부 금액으로 넣은 초안입니다. "
     "영수증 품목·수량으로 적어야 하는 쪽과 증빙서류 칸은 직접 작성해 주세요.\n"

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import re
 
-from .config_gen import CategoryRule, OverdueRulesConfig, parse_overdue_rules_data
+from .config_gen import CategoryRule, OverdueRulesConfig
 
 # 서버가 최신 파서를 로드했는지 /api/health 로 확인
 PARSER_BUILD_ID = "table-format-v2"

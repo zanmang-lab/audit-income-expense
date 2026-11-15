@@ -8,8 +8,6 @@ RUN pip install --no-cache-dir -r requirements-cloud.txt
 COPY . .
 
 ENV PORT=8000
-ENV OMP_NUM_THREADS=1
-ENV OPENBLAS_NUM_THREADS=1
 
 EXPOSE 8000
 

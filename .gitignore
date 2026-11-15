@@ -17,8 +17,6 @@ web/_tmp/
 /*.xlsx
 
 # 양식 원본 (저작권·학기별 상이 — 저장소에 올리지 않음)
-templates/*.hwp
-templates/*.hwpx
 
 # 자동 생성 예시 엑셀
 examples/장부_예시.xlsx

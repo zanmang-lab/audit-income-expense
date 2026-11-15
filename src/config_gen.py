@@ -61,10 +61,6 @@ def parse_overdue_rules_data(data: dict) -> OverdueRulesConfig:
     )
 
 
-def parse_overdue_rules_json(text: str) -> OverdueRulesConfig:
-    return parse_overdue_rules_data(json.loads(text))
-
-
 def parse_business_mapping_json(text: str) -> dict[str, str]:
     """사업번호→사업명 JSON. {"names": {...}} 또는 flat dict 모두 허용."""
     data = json.loads(text)

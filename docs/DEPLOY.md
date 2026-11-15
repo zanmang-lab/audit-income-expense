@@ -34,7 +34,7 @@ GitHub 저장소를 **Render**에 연결하면 `https://xxxx.onrender.com` 형�
 정상이면 https://<서비스명>.onrender.com/api/health 에 JSON이 보입니다.
 
 ```json
-{"status":"ok","parser_build":"table-format-v2","hwp_supported":false,...}
+{"status":"ok","parser_build":"table-format-v2"}
 ```
 
 

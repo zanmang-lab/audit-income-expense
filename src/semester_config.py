@@ -1,15 +1,12 @@
 """학기별 설정 — 사업 역할·규정·출력 접두어를 한곳에서 관리."""
 from __future__ import annotations
 
-import json
-from dataclasses import dataclass, field, replace
-from pathlib import Path
+from dataclasses import dataclass, field
 from typing import Any
 
 from .config_gen import OverdueRulesConfig, parse_overdue_rules_data
 from .rules_config import DEFAULT_RULESET, ROLE_BY_LABEL, RuleSet, build_rules
 
-VALID_ROLES = frozenset({"student_fee", "locker", "rental", "general"})
 
 DEFAULT_LOCKER_DEPOSIT_REMARK = (
     "전자사물함은 대여비 4,000원, 일반사물함은 대여비 2,000원"
@@ -217,48 +214,3 @@ def parse_semester_config_data(data: dict[str, Any]) -> SemesterConfig:
     )
 
 
-def merge_business_names(
-    config: SemesterConfig,
-    name_overrides: dict[str, str],
-) -> SemesterConfig:
-    """사업개요에서 파싱한 이름으로 덮어쓴 새 설정을 반환."""
-    if not name_overrides:
-        return config
-
-    businesses = dict(config.businesses)
-    for key, name in name_overrides.items():
-        try:
-            business_no = int(key)
-        except ValueError:
-            continue
-        businesses[business_no] = BusinessEntry(
-            name=name,
-            role=infer_role_from_name(name, business_no, config.rules),
-        )
-    return replace(config, businesses=businesses)
-
-
-def semester_config_to_dict(config: SemesterConfig) -> dict[str, Any]:
-    """zip 보관·미리보기용 직렬화."""
-    return {
-        "label": config.label,
-        "ledger_sheet": config.ledger_sheet,
-        "businesses": {
-            str(no): {"name": entry.name, "role": entry.role}
-            for no, entry in sorted(config.businesses.items())
-        },
-        "locker": {
-            "deposit_remark": config.locker_deposit_remark,
-            "refund_fee_advisory": config.locker_refund_advisory,
-        },
-        "rental": {"film_fee_per_sheet": config.film_fee_per_sheet},
-        "author": dict(config.author),
-        "비고규칙": config.rules.source,
-        "overdue_rules": {
-            "default_per_day": config.overdue_rules.default_per_day,
-            "categories": [
-                {"per_day": c.per_day, "keywords": c.keywords}
-                for c in config.overdue_rules.categories
-            ],
-        },
-    }

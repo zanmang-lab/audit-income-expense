@@ -14,7 +14,6 @@ from .utils import josa_ro_euro
 
 # 사업 종류: 화면·설정 파일에서 쓰는 한글 이름 ↔ 내부 역할
 ROLE_BY_LABEL = {"사물함": "locker", "대여": "rental", "학생회비": "student_fee", "일반": "general"}
-LABEL_BY_ROLE = {v: k for k, v in ROLE_BY_LABEL.items()}
 
 # 비고 문장 틀마다 쓸 수 있는 자리표시자
 TEMPLATE_FIELDS: dict[str, tuple[str, ...]] = {

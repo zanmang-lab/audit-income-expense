@@ -32,12 +32,6 @@ PHONE_RE = re.compile(r"^01[016789]-?\d{3,4}-?\d{4}$")
 ACCOUNT_RE = re.compile(r"^\d{8,}$")
 
 
-def _norm_header(value: Any) -> str:
-    if value is None:
-        return ""
-    return str(value).strip().lower()
-
-
 def _header_is_sensitive(header: str) -> bool:
     h = header.lower()
     return any(kw in h for kw in SENSITIVE_HEADER_KEYWORDS)
@@ -62,11 +56,6 @@ def _column_pattern_sensitive(values: list[str], threshold: float = 0.5) -> bool
     return (phone_hits / len(non_empty) >= threshold) or (
         account_hits / len(non_empty) >= threshold
     )
-
-
-def detect_sensitive_columns(headers: list[str], data_rows: list[tuple]) -> list[str]:
-    """드롭 대상 열의 헤더명 목록."""
-    return detect_sensitive_columns_from_rows(headers, data_rows)
 
 
 def mask_refund_workbook(source: bytes) -> tuple[bytes, list[str]]:

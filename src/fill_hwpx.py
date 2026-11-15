@@ -32,9 +32,6 @@ from .template_layout import (
     table_paragraph,
 )
 
-# 기존 학복위 양식 좌표 (하위 호환용 이름). 실제 위치는 양식마다 template_layout이 정한다.
-SCALAR_CELLS = LEGACY_LAYOUT.field_at()
-DATA_ROWS = LEGACY_LAYOUT.data_rows
 SEMOK_COL, QTY_COL, PRICE_COL = LEGACY_LAYOUT.semok_col, LEGACY_LAYOUT.qty_col, LEGACY_LAYOUT.price_col
 MULTILINE_FIELDS = {"비고"}
 

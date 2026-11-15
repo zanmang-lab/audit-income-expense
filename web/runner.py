@@ -6,7 +6,6 @@
 """
 from __future__ import annotations
 
-import json
 import uuid
 import zipfile
 from dataclasses import dataclass, field, replace
@@ -376,14 +375,3 @@ def build_run(prep: PreparedRun) -> PipelineResult:
     )
 
 
-def run_pipeline_from_uploads(
-    ledger_source: str | bytes | BinaryIO,
-    overdue_source: str | bytes | BinaryIO,
-    refund_source: str | bytes | BinaryIO,
-    *,
-    upload: UploadConfig,
-    work_dir: Path,
-) -> PipelineResult:
-    """미리보기 없이 한 번에 결과 zip까지 만든다."""
-    prep = prepare_run(ledger_source, overdue_source, refund_source, upload=upload, work_dir=work_dir)
-    return build_run(prep)

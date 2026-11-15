@@ -182,13 +182,6 @@ def _iter_from_rows(
                     advisory=True, auto=True))
 
 
-def iter_ledger_rows(ws: Worksheet, issues: list[InputIssue] | None = None) -> Iterator[LedgerRow]:
-    """워크시트에서 유효한 장부 행을 순서대로 반환. 제외한 행은 issues에 기록."""
-    rows = _read_rows(ws)
-    cols = resolve_columns(rows, LEDGER_COLUMNS, "장부")
-    yield from _iter_from_rows(rows, cols, issues)
-
-
 def _scan_sheet(ws: Worksheet) -> tuple[int, ColumnMap | None, list[tuple], Exception | None]:
     rows = _read_rows(ws)
     try:
@@ -222,16 +215,6 @@ def _choose_sheet(wb: Workbook, preferred: str | None):
         "장부 데이터를 찾지 못했습니다. 날짜·사업번호·기재내용·수입·지출 열이 있는 "
         "시트가 포함된 장부 파일인지 확인해 주세요. (다른 목록 파일을 장부 칸에 올리지 않았는지도 확인해 주세요.)"
     )
-
-
-def find_ledger_sheet(wb: Workbook) -> str:
-    """업로드 장부에서 데이터가 있는 시트를 자동 선택."""
-    return _choose_sheet(wb, None)[0]
-
-
-def resolve_ledger_sheet(wb: Workbook, preferred: str | None = None) -> str:
-    """선호 시트명이 있으면 먼저 시도하고, 없거나 비어 있으면 자동 탐색."""
-    return _choose_sheet(wb, preferred)[0]
 
 
 def parse_ledger_workbook(

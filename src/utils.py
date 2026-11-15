@@ -35,13 +35,6 @@ def format_amount(value: Any) -> str:
     return f"{amount:,}"
 
 
-def parse_amount(value: Any) -> int | None:
-    text = format_amount(value)
-    if not text:
-        return None
-    return int(text.replace(",", ""))
-
-
 def has_batchim(text: str) -> bool:
     if not text:
         return False
@@ -74,14 +67,6 @@ def parse_rental_goods(goods_text: str) -> list[tuple[str, int, str]]:
         if base:
             result.append((base, qty, part.strip()))
     return result
-
-
-def distinct_goods_base_names(goods_texts: list[str]) -> list[str]:
-    names: set[str] = set()
-    for text in goods_texts:
-        for base, _, _ in parse_rental_goods(text):
-            names.add(base)
-    return sorted(names)
 
 
 def same_calendar_date(a: Any, b: Any) -> bool:
@@ -178,13 +163,3 @@ def parse_int_value(value: Any) -> int | None:
     return None
 
 
-def normalize_refund_reason(reason: str | None) -> str:
-    if not reason:
-        return ""
-    mapping = {
-        "당첨등록포기": "당첨 등록 포기",
-        "두번송금": "중복 입금",
-        "중복등록포기": "중복 등록 포기",
-        "규칙미준수": "규칙 미준수",
-    }
-    return mapping.get(reason.strip(), reason.strip())

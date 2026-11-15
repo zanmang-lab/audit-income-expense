@@ -7,11 +7,7 @@ from pathlib import Path
 
 from src.config_gen import parse_business_mapping_json
 from src.semester_config import (
-    DEFAULT_FILM_FEE_PER_SHEET,
     DEFAULT_LABEL,
-    DEFAULT_LEDGER_SHEET,
-    DEFAULT_LOCKER_DEPOSIT_REMARK,
-    DEFAULT_LOCKER_REFUND_ADVISORY,
     SemesterConfig,
     semester_config_from_business_names,
 )
@@ -130,11 +126,6 @@ def parse_business_overview(text: str) -> tuple[dict[str, str], dict[str, str]]:
     return names, roles
 
 
-def parse_business_name_overrides(text: str) -> dict[str, str]:
-    """사업개요에서 사업명 매핑 추출 (종류 표시는 떼어 낸다)."""
-    return parse_business_overview(text)[0]
-
-
 @dataclass
 class BasicInfo:
     """웹 폼 '기본 정보' — 비워 두면 기존 기본값을 쓴다."""
@@ -184,12 +175,3 @@ def build_semester_from_overview(
     return replace(config, **changes) if changes else config
 
 
-def validate_image(filename: str, data: bytes) -> str:
-    ext = Path(filename).suffix.lower()
-    if ext not in IMAGE_EXTENSIONS:
-        raise ValueError(
-            f"연체료 규정은 이미지 파일({', '.join(sorted(IMAGE_EXTENSIONS))})이어야 합니다."
-        )
-    if len(data) < 8:
-        raise ValueError("연체료 규정 이미지가 비어 있습니다.")
-    return ext

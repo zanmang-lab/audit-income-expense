@@ -26,11 +26,6 @@ from .sheet_reader import (
     resolve_columns,
 )
 
-LOCKER_FIXED_REMARK = (
-    "전자사물함은 대여비 4,000원, 일반사물함은 대여비 2,000원"
-)  # 레거시 기본값; 실제 출력은 SemesterConfig.locker_deposit_remark 사용
-
-
 
 @dataclass
 class OverdueRecord:
