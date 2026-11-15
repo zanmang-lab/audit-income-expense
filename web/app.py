@@ -1,4 +1,4 @@
-"""FastAPI 웹 앱 — 업로드 → 마스킹 → 엔진 → zip 다운로드."""
+"""웹 서버 — 첫 화면, 미리보기, 결과 받기 주소를 연결한다."""
 from __future__ import annotations
 
 import json
@@ -24,19 +24,19 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 
-from src.parse_overdue_rules import (
+from src.rules.overdue import (
     PARSER_BUILD_ID,
     parse_overdue_rules_text,
     rules_to_summary,
 )
 from web.errors import PipelineError, format_error_detail, is_user_input_error, run_stage
-from web.masking import mask_refund_workbook
+from src.inputs.masking import mask_refund_workbook
 from web.preview import build_preview_view, parse_edit_form
 from web.runner import PipelineResult, PreparedRun, build_run, prepare_run
-from web.form_examples import upload_form_examples_html
-from web.sample_files import ensure_example_files, resolve_example_path
-from src.rules_config import TEMPLATE_FIELDS, RulesError
-from src.semester_config import DEFAULT_FILM_FEE_PER_SHEET, DEFAULT_LOCKER_DEPOSIT_REMARK
+from web.examples import upload_form_examples_html
+from web.examples import ensure_example_files, resolve_example_path
+from src.rules.remark_rules import TEMPLATE_FIELDS, RulesError
+from src.rules.semester import DEFAULT_FILM_FEE_PER_SHEET, DEFAULT_LOCKER_DEPOSIT_REMARK
 from web.settings_file import (
     build_settings,
     default_rules_text,
@@ -44,7 +44,7 @@ from web.settings_file import (
     parse_rules_text,
     settings_to_json,
 )
-from web.semester_inputs import (
+from web.form_inputs import (
     EXAMPLE_AUTHOR,
     BasicInfo,
     UploadConfig,
@@ -348,7 +348,7 @@ async def generate(
 
     rental_evidence_image = "default"
     if rental_evidence is not None and rental_evidence.filename:
-        from src.evidence_image import load_evidence_image
+        from src.hwpx.evidence_image import load_evidence_image
         try:
             rental_evidence_image = load_evidence_image(
                 await _read_bytes(rental_evidence, "물품 대여 증빙 이미지"), "올린 물품 대여 증빙 이미지")
@@ -460,10 +460,10 @@ async def build(request: Request, preview_id: str) -> HTMLResponse:
     job.builds.append(download_id)
 
     s = result.summary
-    from src.review_levels import LEVEL_HELP, LEVELS
-    from src.pipeline import group_by_kind
+    from src.draft.review import LEVEL_HELP, LEVELS
+    from src.draft.pages import group_by_kind
     review_groups = []
-    from src.review_levels import MUST, NOTE
+    from src.draft.review import MUST, NOTE
     shown = [r for r in result.review_rows
              if r["단계"] != NOTE and (r["사업"] is not None or r["단계"] == MUST)]
     hidden_count = len(result.review_rows) - len(shown)
@@ -495,7 +495,7 @@ async def build(request: Request, preview_id: str) -> HTMLResponse:
 @app.get("/default-evidence.jpg")
 async def default_evidence() -> FileResponse:
     """첫 화면에서 보여 주는 기본 증빙 그림(물품 대여 사업 안내사항)."""
-    from src.evidence_image import DEFAULT_RENTAL_EVIDENCE
+    from src.hwpx.evidence_image import DEFAULT_RENTAL_EVIDENCE
     return FileResponse(DEFAULT_RENTAL_EVIDENCE, media_type="image/jpeg")
 
 
@@ -538,7 +538,7 @@ async def settings_from_file(file: UploadFile = File(...)) -> JSONResponse:
         return _json_error("이 프로그램이 만든 결과 zip(또는 설정.json)이 아닙니다.")
     rules = settings.get("비고규칙")
     if isinstance(rules, dict):
-        from src.rules_config import RETIRED_KEYS, _OLD_DEFAULTS, DEFAULT_RULES
+        from src.rules.remark_rules import RETIRED_KEYS, _OLD_DEFAULTS, DEFAULT_RULES
         cleaned = {k: v for k, v in rules.items()
                    if k not in RETIRED_KEYS and _OLD_DEFAULTS.get(k) != v and not str(k).startswith("_")}
         settings["비고규칙"] = {**DEFAULT_RULES, **cleaned}

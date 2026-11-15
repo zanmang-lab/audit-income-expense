@@ -1,21 +1,21 @@
-"""페이지 칸 채우기 및 preview/검수 산출 (SPEC 5·7번)."""
+"""초안 만들기의 중심 — 쪽마다 칸을 채우고, 검수 항목을 모으고, hwpx로 내보낸다 (SPEC 5·7번)."""
 from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
 from typing import Any, Sequence
 
-from .parse_ledger import MAX_ROWS_PER_PAGE, LedgerRow, Page, split_pages
-from .template_layout import TemplateLayout
-from .remarks import (
+from src.inputs.ledger import MAX_ROWS_PER_PAGE, LedgerRow, Page, split_pages
+from src.hwpx.layout import TemplateLayout
+from src.draft.remarks import (
     OverdueRecord,
     RefundRecord,
     RemarkResult,
     build_page_remark,
 )
-from .semester_config import SemesterConfig
-from .sheet_reader import InputIssue
-from .utils import format_amount, format_date
+from src.rules.semester import SemesterConfig
+from src.inputs.sheet_reader import InputIssue
+from src.common import format_amount, format_date
 
 
 @dataclass
@@ -29,7 +29,7 @@ class ReviewItem:
 
     @property
     def level(self) -> str:
-        from .review_levels import level_of
+        from src.draft.review import level_of
         return level_of(self)
 
     def where(self, labels: dict[tuple[int, int], str] | None = None) -> str:
@@ -125,7 +125,7 @@ def split_refund_fee(rows: list[LedgerRow], refund_records: list[RefundRecord], 
     검산이 될 때만 나눈다: 모든 행이 환불자 목록과 연결되고, (장부 금액 − 목록 환불금액)이
     모든 행에서 같은 양수여야 한다. 하나라도 아니면 나누지 않고 이유를 알린다.
     """
-    from .remarks import _find_refund_by_name
+    from src.draft.remarks import _find_refund_by_name
 
     principals: list[int] = []
     diffs: list[int] = []
@@ -348,7 +348,7 @@ def review_rows(
     labels: dict[tuple[int, int], str] | None = None,
 ) -> list[dict[str, Any]]:
     """검수 항목을 3단계 순서(꼭 고칠 것 → 확인할 것 → 참고)로. 입력 파일 항목이 먼저."""
-    from .review_levels import LEVELS, kind_of
+    from src.draft.review import LEVELS, kind_of
 
     rows: list[dict[str, Any]] = []
     for i in input_issues:
@@ -376,7 +376,7 @@ def format_review_report(
     labels: dict[tuple[int, int], str] | None = None,
 ) -> str:
     """검수목록.txt — 꼭 고칠 것 / 확인할 것 / 참고 순서로 묶는다."""
-    from .review_levels import LEVEL_HELP, LEVELS
+    from src.draft.review import LEVEL_HELP, LEVELS
 
     rows = review_rows(review_items, input_issues, labels)
     lines = [REPORT_NOTE, ""]
@@ -393,7 +393,7 @@ def format_review_report(
 
 
 def filled_page_to_hwpx_dict(page: FilledPage) -> dict[str, Any]:
-    """fill_hwpx.fill_document이 받는 페이지 dict로 변환."""
+    """hwpx.fill.fill_document가 받는 페이지 dict로 변환."""
     rows = list(zip(page.items, page.quantities, page.unit_prices))
     return {
         "사업번호": page.business_no_label,
@@ -422,7 +422,7 @@ def export_hwpx_files(
     """사업명별 .hwpx 파일을 output_dir에 생성. author는 모든 페이지의 작성자 칸에 들어간다.
 
     evidence_image가 있으면 물품 대여 사업 수입 쪽 증빙서류 칸에 그 그림을 넣는다."""
-    from .fill_hwpx import fill_document
+    from src.hwpx.fill import fill_document
 
     prefix = filename_prefix or "수입지출내역서"
     written: list[str] = []
@@ -448,7 +448,7 @@ def export_combined_hwpx(
     evidence_image=None,
 ) -> str | None:
     """모든 사업의 쪽을 사업번호 순서대로 한 파일(통합본)에. 쪽이 없으면 None."""
-    from .fill_hwpx import fill_document
+    from src.hwpx.fill import fill_document
 
     pages = [{**(author or {}), **filled_page_to_hwpx_dict(p)}
              for _, biz in sorted(result.businesses.items()) for p in biz.pages]

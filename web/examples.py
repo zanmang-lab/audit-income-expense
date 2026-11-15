@@ -1,10 +1,13 @@
-"""업로드 폼용 예시 표 HTML 조각 (장부·연체료·환불자 목록).
+"""첫 화면 ⑤~⑦의 예시 — 화면에 보이는 예시 표와 '예시 파일 받기' 엑셀.
 
 이름은 모두 가상입니다(공개 화면이라 실제 학생 이름을 쓰지 않음).
 """
 from __future__ import annotations
 
 from html import escape
+from pathlib import Path
+
+import openpyxl
 
 
 def _table(headers: list[str], rows: list[list[str]]) -> str:
@@ -67,3 +70,104 @@ def upload_form_examples_html() -> dict[str, str]:
             download_label="환불자 목록 예시 파일 받기",
         ),
     }
+
+
+# ── 예시 파일 받기용 엑셀 ──
+LEDGER_SHEET = "장부"
+
+ALLOWED_EXAMPLES = frozenset(
+    {
+        "장부_예시.xlsx",
+        "연체료목록_예시.xlsx",
+        "환불자목록_예시.xlsx",
+    }
+)
+
+
+def ensure_example_files(examples_dir: Path) -> None:
+    examples_dir.mkdir(parents=True, exist_ok=True)
+    _write_ledger_sample(examples_dir / "장부_예시.xlsx")
+    _write_overdue_sample(examples_dir / "연체료목록_예시.xlsx")
+    _write_refund_sample(examples_dir / "환불자목록_예시.xlsx")
+
+
+def resolve_example_path(examples_dir: Path, filename: str) -> Path | None:
+    if filename not in ALLOWED_EXAMPLES:
+        return None
+    path = examples_dir / filename
+    if not path.exists():
+        ensure_example_files(examples_dir)
+    return path if path.exists() else None
+
+
+def _write_ledger_sample(path: Path) -> None:
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = LEDGER_SHEET
+    ws.append(
+        [
+            "날짜",
+            "사업번호",
+            "세부번호",
+            "기재내용",
+            "현금",
+            "구분",
+            "개요",
+            "수입",
+            "지출",
+            "오류여부",
+        ]
+    )
+    ws.append(
+        [
+            "2026-03-10",
+            2,
+            1,
+            "전자12홍길동",
+            "",
+            "지출의환급",
+            "1학기 대면 사물함 배부 사업 수익금 입금",
+            4000,
+            0,
+            "",
+        ]
+    )
+    ws.append(
+        [
+            "2026-03-23",
+            3,
+            1,
+            "김하늘",
+            "",
+            "지출의환급",
+            "1학기 물품 대여 사업",
+            4000,
+            0,
+            "",
+        ]
+    )
+    wb.save(path)
+    wb.close()
+
+
+def _write_overdue_sample(path: Path) -> None:
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "연체료목록"
+    ws.append(["반납일(입금일)", "대여물품", "성명", "연체료", "비고"])
+    ws.append(["2026-03-23", "보조배터리 1개", "김하늘", 4000, ""])
+    ws.append(["2026-03-31", "폴라로이드 필름", "이도윤", 7000, "필름값"])
+    ws.append(["2026-04-01", "앰프 1개", "박서연", 9000, "최지호'으로 입금"])
+    wb.save(path)
+    wb.close()
+
+
+def _write_refund_sample(path: Path) -> None:
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "환불자목록"
+    ws.append(["사물함 번호", "이름", "환불금액", "사유"])
+    ws.append(["전자-12", "정예린", 4000, "당첨등록포기"])
+    ws.append(["일반-05", "강민준", 2000, "두번송금"])
+    wb.save(path)
+    wb.close()

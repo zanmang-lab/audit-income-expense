@@ -1,4 +1,4 @@
-"""엑셀 시트 공통 읽기 — 헤더 이름으로 열 찾기 + 입력 확인 항목.
+"""엑셀 시트 공통 읽기 — 머리글 이름으로 열 찾기, 읽다가 생긴 문제를 검수 항목으로 남기기.
 
 열 위치(A, B, C…)가 아니라 헤더 글자로 열을 찾는다.
 - 헤더를 하나도 알아보지 못하면 기존 열 순서(fallback)로 읽고 '입력확인 권장'을 남긴다.
@@ -34,7 +34,7 @@ class InputIssue:
 
     @property
     def level(self) -> str:
-        from .review_levels import level_of
+        from src.draft.review import level_of
         return level_of(self)
 
     @property

@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import html
 import io
-import re
 import zipfile
 from datetime import date
 
@@ -11,10 +10,10 @@ import openpyxl
 import pytest
 
 from hwpx_builder import build_hwpx, read_cells, standard_cells
-from src.config_gen import parse_overdue_rules_data
-from src.parse_ledger import LedgerRow, Page
-from src.remarks import OverdueRecord, RefundRecord, build_page_remark, similar_names
-from web.semester_inputs import build_semester_from_overview
+from src.rules.overdue import parse_overdue_rules_data
+from src.inputs.ledger import LedgerRow, Page
+from src.draft.remarks import OverdueRecord, RefundRecord, build_page_remark, similar_names
+from web.form_inputs import build_semester_from_overview
 
 RULES = parse_overdue_rules_data({"default_per_day": 2000, "categories": []})
 

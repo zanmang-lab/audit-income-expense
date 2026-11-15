@@ -1,18 +1,18 @@
-"""업로드 양식·사업개요 처리."""
+"""첫 화면 입력값 처리 — 기본값, 사업개요 읽기, 올린 양식 확인."""
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-from src.config_gen import parse_business_mapping_json
-from src.semester_config import (
+from src.rules.overdue import parse_business_mapping_json
+from src.rules.semester import (
     DEFAULT_LABEL,
     SemesterConfig,
     semester_config_from_business_names,
 )
-from src.config_gen import OverdueRulesConfig
-from src.rules_config import ROLE_BY_LABEL, RuleSet
+from src.rules.overdue import OverdueRulesConfig
+from src.rules.remark_rules import ROLE_BY_LABEL, RuleSet
 
 TEMPLATE_EXTENSIONS = {".hwp", ".hwpx"}
 
@@ -68,7 +68,7 @@ def resolve_template(
     filename: str,
     work_dir: Path,
 ) -> Path:
-    """업로드된 .hwp/.hwpx를 fill_hwpx가 쓸 .hwpx 경로로 준비."""
+    """업로드된 .hwp/.hwpx를 문서 채우기에 쓸 .hwpx 경로로 준비."""
     ext = Path(filename).suffix.lower()
     if ext not in TEMPLATE_EXTENSIONS:
         raise ValueError("수입지출 양식은 .hwp 또는 .hwpx 파일이어야 합니다.")

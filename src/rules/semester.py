@@ -1,11 +1,11 @@
-"""학기별 설정 — 사업 역할·규정·출력 접두어를 한곳에서 관리."""
+"""학기 설정 — 사업 번호별 사업명·종류, 연체료 규정, 비고 규칙, 파일 이름 앞부분."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any
 
-from .config_gen import OverdueRulesConfig, parse_overdue_rules_data
-from .rules_config import DEFAULT_RULESET, ROLE_BY_LABEL, RuleSet, build_rules
+from src.rules.overdue import OverdueRulesConfig, parse_overdue_rules_data
+from src.rules.remark_rules import DEFAULT_RULESET, ROLE_BY_LABEL, RuleSet, build_rules
 
 
 DEFAULT_LOCKER_DEPOSIT_REMARK = (
@@ -50,7 +50,7 @@ class SemesterConfig:
     )
     # 작성자 정보 — 양식의 '성명/직위/소속/연락처' 라벨 오른쪽 칸에 채운다.
     author: dict[str, str] = field(default_factory=dict)
-    # 비고 규칙(문장 틀·키워드 등) — src/rules_config.py
+    # 비고 규칙(문장 틀·키워드 등) — src/rules/remark_rules.py
     rules: RuleSet = field(default_factory=lambda: DEFAULT_RULESET)
 
     def role_for(self, business_no: int) -> str:

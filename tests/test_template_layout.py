@@ -7,9 +7,9 @@ from datetime import date
 import pytest
 
 from hwpx_builder import build_hwpx, read_cells, standard_cells, write_hwpx
-from src.fill_hwpx import fill_document
-from src.parse_ledger import LedgerRow, split_pages
-from src.template_layout import LEGACY_SCALAR, TemplateError, analyze_template
+from src.hwpx.fill import fill_document
+from src.inputs.ledger import LedgerRow, split_pages
+from src.hwpx.layout import LEGACY_SCALAR, TemplateError, analyze_template
 
 PAGE = {
     "사업번호": "1-1~2", "사업명": "사물함", "날짜": "2026.03.10.", "수입지출": "수입", "구분": "사업수입",
@@ -139,7 +139,7 @@ def test_too_many_rows_for_template_is_error(tmp_path):
 
 def test_author_labels_with_offset_merges(tmp_path):
     # 26-1 학복위 양식: 직위·성명 라벨과 오른쪽 칸이 한 줄씩 어긋나게 병합돼 있다.
-    from src.fill_hwpx import SECTION, find_label_targets, table_paragraph
+    from src.hwpx.fill import SECTION, find_label_targets, table_paragraph
     import zipfile
     cells = [c for c in standard_cells() if not (5 <= c[0] <= 11)]
     cells += [
@@ -160,7 +160,7 @@ def test_author_labels_with_offset_merges(tmp_path):
 def _evi_img():
     from io import BytesIO
     from PIL import Image
-    from src.evidence_image import load_evidence_image
+    from src.hwpx.evidence_image import load_evidence_image
     buf = BytesIO()
     Image.new("RGB", (200, 100), "white").save(buf, "PNG")
     return load_evidence_image(buf.getvalue())
@@ -169,7 +169,7 @@ def _evi_img():
 def test_evidence_picture_goes_below_label_in_26_1_layout(tmp_path):
     # 26-1 양식: '증빙서류' 라벨(5행 7열) 아래 큰 칸(6행 7열)에 그림
     import zipfile
-    from src.fill_hwpx import SECTION, find_evidence_target, table_paragraph
+    from src.hwpx.fill import SECTION, find_evidence_target, table_paragraph
     cells = [c for c in standard_cells() if not (5 <= c[0] <= 11)]
     cells += [(5, 0, 1, 7, "책임자"), (5, 7, 1, 5, "증빙서류"), (6, 0, 1, 1, "소속"), (6, 1, 1, 6, ""),
               (6, 7, 6, 5, ""), (7, 0, 5, 7, "")]
@@ -187,7 +187,7 @@ def test_evidence_picture_goes_below_label_in_26_1_layout(tmp_path):
 
 def test_evidence_picture_right_of_label_in_standard_layout(tmp_path):
     import zipfile
-    from src.fill_hwpx import SECTION, find_evidence_target, table_paragraph
+    from src.hwpx.fill import SECTION, find_evidence_target, table_paragraph
     tpl = write_hwpx(tmp_path / "t.hwpx", standard_cells())
     xml = table_paragraph(zipfile.ZipFile(tpl).read(SECTION).decode())
     assert find_evidence_target(xml, analyze_template(str(tpl))) == (6, 7)

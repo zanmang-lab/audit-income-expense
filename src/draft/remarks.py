@@ -1,15 +1,15 @@
-"""비고 생성 (SPEC 6번)."""
+"""비고 만들기 — 사물함 대여비·환불 사유, 물품 대여 연체료 문장 (SPEC 6번)."""
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from .config_gen import OverdueRulesConfig, lookup_per_day
-from .parse_ledger import LedgerRow, Page
-from .rules_config import DEFAULT_RULESET, RuleSet
-from .semester_config import SemesterConfig
-from .utils import (
+from src.rules.overdue import OverdueRulesConfig, lookup_per_day
+from src.inputs.ledger import LedgerRow, Page
+from src.rules.remark_rules import DEFAULT_RULESET, RuleSet
+from src.rules.semester import SemesterConfig
+from src.common import (
     format_amount,
     has_batchim,
     josa_ro_euro,
@@ -18,7 +18,7 @@ from .utils import (
     parse_date_value,
     same_calendar_date,
 )
-from .sheet_reader import (
+from src.inputs.sheet_reader import (
     OVERDUE_COLUMNS,
     REFUND_COLUMNS,
     InputIssue,

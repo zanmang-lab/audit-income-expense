@@ -1,4 +1,4 @@
-"""장부 파싱 및 페이지 분할 (SPEC 3번)."""
+"""장부 엑셀 읽기와 쪽 나누기 (SPEC 3번)."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -8,8 +8,8 @@ import openpyxl
 from openpyxl.workbook.workbook import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
 
-from .semester_config import SemesterConfig
-from .sheet_reader import (
+from src.rules.semester import SemesterConfig
+from src.inputs.sheet_reader import (
     LEDGER_COLUMNS,
     ColumnError,
     ColumnMap,
@@ -17,7 +17,7 @@ from .sheet_reader import (
     is_blank_row,
     resolve_columns,
 )
-from .utils import parse_amount_value, parse_date_value, parse_int_value
+from src.common import parse_amount_value, parse_date_value, parse_int_value
 
 MAX_ROWS_PER_PAGE = 13
 

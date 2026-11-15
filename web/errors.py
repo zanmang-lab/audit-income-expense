@@ -1,4 +1,4 @@
-"""웹/API용 오류 메시지 포맷."""
+"""오류를 사용자가 알아볼 수 있는 문장으로 바꾸기."""
 from __future__ import annotations
 
 import traceback
@@ -30,9 +30,9 @@ def format_error_detail(stage: str, exc: BaseException) -> str:
 
 def is_user_input_error(exc: BaseException) -> bool:
     """사용자가 올린 파일 모양 문제(열 못 찾음 등) — 코드 위치 대신 안내만 보여준다."""
-    from src.rules_config import RulesError
-    from src.sheet_reader import ColumnError
-    from src.template_layout import TemplateError
+    from src.rules.remark_rules import RulesError
+    from src.inputs.sheet_reader import ColumnError
+    from src.hwpx.layout import TemplateError
 
     if isinstance(exc, PipelineError):
         exc = exc.cause

@@ -1,8 +1,7 @@
-"""
-fill_hwpx.py — 수입지출내역서 양식(.hwpx)을 채운다.
+"""양식(.hwpx)의 칸을 채워 문서를 만든다.
 
 설계 요지
-- 양식은 표 1개. 값 칸 위치는 src/template_layout.py가 정한다
+- 양식은 표 1개. 값 칸 위치는 src/hwpx/layout.py가 정한다
   (기존 학복위 좌표를 라벨로 확인 → 다른 양식은 라벨 오른쪽 칸).
 - 빈 셀의 <hp:run charPrIDRef="N"/> (빈 런)에 <hp:t>값</hp:t>을 끼워 넣어 글꼴/정렬 보존.
 - 페이지 1개 = 표 1벌. 2페이지부터 표 문단에 pageBreak="1" 부여.
@@ -17,14 +16,13 @@ fill_hwpx.py — 수입지출내역서 양식(.hwpx)을 채운다.
       "총액": "52,000", "비고": "여러 줄은 \\n으로",
       "rows": [("세목","1","4,000"), ...]   # 최대 13개
     }
-- 사업명별로 pages를 묶어 파일을 나누는 것은 main.py(호출부)에서 처리.
+- 사업별로 파일을 나누거나 통합본을 만드는 것은 src/draft/pages.py(export_*)에서 한다.
 """
 import os, re, shutil, zipfile
-from pathlib import Path
 
 SECTION = "Contents/section0.xml"
 
-from .template_layout import (
+from src.hwpx.layout import (
     LEGACY_LAYOUT,
     TemplateLayout,
     analyze_table,
@@ -390,7 +388,7 @@ def fill_document(
     evidence_image(src.evidence_image.EvidenceImage)가 있으면 '증빙이미지'가 참인 쪽의
     증빙서류 칸에 그림을 넣는다.
 
-    layout을 주지 않으면 양식에서 칸 위치를 찾는다(src/template_layout.py).
+    layout을 주지 않으면 양식에서 칸 위치를 찾는다(src/hwpx/layout.py).
     값을 넣지 못한 칸은 problems에 남긴다.
     """
     work = out_path + "__work"
@@ -420,23 +418,3 @@ def fill_document(
     finally:
         shutil.rmtree(work, ignore_errors=True)
     return out_path
-
-
-if __name__ == "__main__":
-    demo = [
-        {"사업번호": "2-1~13", "사업명": "1학기대면사물함배부사업", "날짜": "2026.03.10.",
-         "수입지출": "수입", "구분": "지출의환급", "내용": "중앙도서관 사물함 수익금 입금",
-         "총액": "8,000",
-         "비고": "전자 사물함은 대여비 4,000원, 일반 사물함은 대여비 2,000원",
-         "rows": [("전자12홍길동", "1", "4,000"), ("전자26김철수", "1", "4,000")]},
-        {"사업번호": "3-1", "사업명": "1학기물품대여사업", "날짜": "2026.03.23.",
-         "수입지출": "수입", "구분": "지출의환급", "내용": "대여 물품 연체료 입금",
-         "총액": "4,000",
-         "비고": "김하늘님 보조배터리 1개 대여 후 4일 연체되어 연체료 4,000원 부과",
-         "rows": [("김하늘", "1", "4,000")]},
-    ]
-    root = Path(__file__).resolve().parent.parent
-    tpl = root / "templates" / "수입지출내역서_양식.hwpx"
-    out = root / "output" / "_sample.hwpx"
-    fill_document(str(tpl), demo, str(out))
-    print(f"샘플 생성 완료: {out}")

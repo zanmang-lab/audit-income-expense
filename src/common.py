@@ -1,4 +1,4 @@
-"""공통 유틸리티."""
+"""공통 도구 — 날짜·금액 읽기와 표기, 조사(으로/로) 고르기, 물품 이름 나누기."""
 from __future__ import annotations
 
 import re

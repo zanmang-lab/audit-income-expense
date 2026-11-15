@@ -1,4 +1,4 @@
-"""비고 규칙 설정 — 코드에 박혀 있던 업무 규칙을 한곳에 모은다.
+"""비고 문장 규칙 — 문장 틀, 환불 사유 표현, 사업 종류 키워드 등을 한곳에 모은다.
 
 기본값(DEFAULT_RULES)은 이전 버전의 출력과 글자 하나까지 같게 맞춰 두었다.
 사용자는 바꾸고 싶은 항목만 적으면 되고, 적지 않은 항목은 기본값을 쓴다.
@@ -10,7 +10,7 @@ import string
 from dataclasses import dataclass
 from typing import Any
 
-from .utils import josa_ro_euro
+from src.common import josa_ro_euro
 
 # 사업 종류: 화면·설정 파일에서 쓰는 한글 이름 ↔ 내부 역할
 ROLE_BY_LABEL = {"사물함": "locker", "대여": "rental", "학생회비": "student_fee", "일반": "general"}

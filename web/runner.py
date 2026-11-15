@@ -1,4 +1,4 @@
-"""엔진 파이프라인 실행 (web/CLI 공용).
+"""문서 만들기 실행 — 1) 읽고 쪽·비고 만들기(미리보기용) 2) 고친 내용 반영해 결과 zip 만들기.
 
 두 단계로 나뉜다.
 1) prepare_run: 양식 칸 확인 → 엑셀 읽기 → 페이지·비고 만들기 (미리보기에 쓰는 결과)
@@ -15,9 +15,9 @@ from typing import BinaryIO
 
 import openpyxl
 
-from src.fill_hwpx import missing_label_fields
-from src.parse_ledger import load_ledger_workbook, parse_ledger_workbook
-from src.pipeline import (
+from src.hwpx.fill import missing_label_fields
+from src.inputs.ledger import load_ledger_workbook, parse_ledger_workbook
+from src.draft.pages import (
     EngineResult,
     ReviewItem,
     export_combined_hwpx,
@@ -27,11 +27,11 @@ from src.pipeline import (
     review_rows,
     run_engine,
 )
-from src.remarks import parse_overdue_sheet, parse_refund_sheet
-from src.sheet_reader import InputIssue
-from src.template_layout import TemplateLayout, analyze_template
+from src.draft.remarks import parse_overdue_sheet, parse_refund_sheet
+from src.inputs.sheet_reader import InputIssue
+from src.hwpx.layout import TemplateLayout, analyze_template
 from web.errors import run_stage
-from web.semester_inputs import UploadConfig
+from web.form_inputs import UploadConfig
 
 EDITABLE_FIELDS = ("구분", "내용", "비고")
 _FIELD_ATTR = {"구분": "classification", "내용": "content", "비고": "remark"}
@@ -220,7 +220,7 @@ def prepare_run(
 
 
 def _rental_evidence(upload: UploadConfig):
-    from src.evidence_image import default_rental_evidence
+    from src.hwpx.evidence_image import default_rental_evidence
 
     if upload.rental_evidence == "default":
         return default_rental_evidence()
@@ -245,14 +245,14 @@ def review_checklist_xlsx(rows: list[dict], semester_label: str) -> bytes:
     """검수목록 체크리스트(엑셀). 단계 순서, 확인 칸은 비워 둔다."""
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Font, PatternFill
-    from src.review_levels import CHECK, MUST, NOTE
+    from src.draft.review import CHECK, MUST, NOTE
 
     wb = Workbook()
     ws = wb.active
     ws.title = "검수목록"
     ws.append(["확인", "단계", "종류", "사업", "쪽", "문서 사업번호", "대상", "내용"])
-    from src.pipeline import group_by_kind
-    from src.review_levels import LEVELS
+    from src.draft.pages import group_by_kind
+    from src.draft.review import LEVELS
     for lv in LEVELS:
         for _, group in group_by_kind([r for r in rows if r["단계"] == lv]):
             for r in group:

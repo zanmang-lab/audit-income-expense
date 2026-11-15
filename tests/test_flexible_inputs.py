@@ -8,15 +8,15 @@ from datetime import date, datetime
 import openpyxl
 import pytest
 
-from src.fill_hwpx import fill_document, missing_label_fields
-from src.template_layout import LEGACY_LAYOUT
-from src.parse_ledger import parse_ledger_workbook
-from src.remarks import parse_overdue_sheet, parse_refund_sheet
-from src.semester_config import parse_semester_config_data
-from src.sheet_reader import ColumnError
-from src.utils import format_date, parse_amount_value, parse_date_value
-from web.masking import mask_refund_workbook
-from web.semester_inputs import BasicInfo, build_semester_from_overview
+from src.hwpx.fill import fill_document, missing_label_fields
+from src.hwpx.layout import LEGACY_LAYOUT
+from src.inputs.ledger import parse_ledger_workbook
+from src.draft.remarks import parse_overdue_sheet, parse_refund_sheet
+from src.rules.semester import parse_semester_config_data
+from src.inputs.sheet_reader import ColumnError
+from src.common import format_date, parse_amount_value, parse_date_value
+from src.inputs.masking import mask_refund_workbook
+from web.form_inputs import BasicInfo, build_semester_from_overview
 
 
 def _wb(rows):

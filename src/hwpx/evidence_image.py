@@ -1,4 +1,4 @@
-"""증빙서류 칸에 넣을 그림 (물품 대여 사업 수입 쪽 — 연체료 규정 안내문).
+"""증빙서류 칸에 넣을 그림 (물품 대여 사업 수입 쪽 — 안내사항 사진).
 
 기본 그림은 assets/rental_evidence.jpg. 웹에서 다른 그림을 올리면 그것을 쓴다.
 """
@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
 
-DEFAULT_RENTAL_EVIDENCE = Path(__file__).resolve().parent.parent / "assets" / "rental_evidence.jpg"
+DEFAULT_RENTAL_EVIDENCE = Path(__file__).resolve().parents[2] / "assets" / "rental_evidence.jpg"
 MAX_SIDE_PX = 1600  # 너무 큰 사진은 줄여서 넣는다(문서 용량)
 
 

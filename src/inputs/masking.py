@@ -1,4 +1,4 @@
-"""환불자 목록 개인정보 열 마스킹 (web 전처리 전용)."""
+"""환불자 목록에서 전화번호·계좌번호 같은 개인정보 열 지우기 (올리자마자 서버에서 처리)."""
 from __future__ import annotations
 
 import re
@@ -8,7 +8,7 @@ from typing import Any
 import openpyxl
 from openpyxl import Workbook
 
-from src.sheet_reader import REFUND_COLUMNS, resolve_columns
+from src.inputs.sheet_reader import REFUND_COLUMNS, resolve_columns
 
 # 엔진(parse_refund_sheet)이 기대하는 열 위치: 0=사물함, 1=이름, 3=금액, 4=사유
 ENGINE_COL_LOCKER = 0

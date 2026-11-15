@@ -127,13 +127,37 @@ python -m pytest tests
 ## 프로젝트 구조
 
 ```
-src/           엔진 (장부 파싱, 연체료 계산, hwpx 채우기)
-               sheet_reader.py 엑셀 열 찾기 · rules_config.py 비고 규칙 기본값
-               template_layout.py 양식 칸 찾기
-web/static/    화면 스타일(app.css)과 글꼴(Pretendard) — 외부 CDN 없이 동작
-web/           FastAPI 웹 앱 + UI 템플릿 (runner.py: 준비→미리보기→생성, preview.py: 미리보기)
-assets/        기본 물품 대여 증빙 그림
-docs/SPEC.md   상세 규칙 명세
+src/                    문서를 만드는 엔진 (순서: 읽기 → 규칙 → 초안 → 한글 문서)
+  inputs/               1. 읽기
+    ledger.py             장부 엑셀 읽기, 쪽 나누기
+    sheet_reader.py       머리글 이름으로 열 찾기 (장부·목록 공통)
+    masking.py            환불자 목록의 전화번호·계좌번호 열 지우기
+  rules/                2. 규칙
+    overdue.py            연체료 규정 읽기, 물품별 1일 단가 찾기
+    remark_rules.py       비고 문장 틀·환불 사유 표현·사업 종류 키워드 (기본값)
+    semester.py           학기 설정 (사업명·종류, 규정, 비고 규칙을 한데 묶음)
+  draft/                3. 초안 만들기
+    pages.py              쪽마다 칸 채우기, 검수 항목 모으기, hwpx로 내보내기
+    remarks.py            비고 문장 만들기 (사물함·물품 대여)
+    review.py             검수 3단계(꼭 고칠 것·확인할 것·참고)와 종류
+  hwpx/                 4. 한글 문서
+    layout.py             양식에서 칸 위치 찾기
+    fill.py               양식 칸 채우기
+    evidence_image.py     증빙서류 칸 그림
+  common.py             날짜·금액 읽기 등 공통 도구
+web/                    웹 화면과 서버
+  app.py                  주소 연결 (첫 화면, 미리보기, 결과 받기)
+  runner.py               문서 만들기 실행 (미리보기용 준비 → 결과 zip)
+  preview.py              미리보기 화면 내용, 고친 칸 읽기
+  form_inputs.py          첫 화면 입력값·기본값·올린 양식 확인
+  settings_file.py        지난 학기 입력값(설정.json) 저장·불러오기
+  examples.py             예시 표와 예시 엑셀 파일
+  errors.py               오류 문장
+  templates/              화면 4개 (첫 화면, 미리보기, 결과, 오류)
+  static/                 화면 스타일(app.css)과 글꼴 — 외부 CDN 없이 동작
+assets/                 기본 물품 대여 증빙 그림
+tests/                  테스트 (python -m pytest tests)
+docs/                   SPEC.md 상세 규칙, DEPLOY.md 배포 방법
 ```
 
 ## 라이선스

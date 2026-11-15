@@ -1,4 +1,4 @@
-"""설정 파일(.json) — 사업개요·연체료 규정·기본 정보·비고 규칙을 한 파일로 저장·불러오기.
+"""지난 학기 입력값(설정.json) — 결과 zip에 넣고, 다음 학기에 불러와 칸을 채운다.
 
 웹 첫 화면에서 불러오면 입력칸이 채워지고, 결과 zip에는 이번에 쓴 설정이 `설정.json`으로 들어간다.
 성명·연락처는 개인정보라 설정 파일에 넣지 않는다(학기도 직접 고른다).
@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from src.rules_config import DEFAULT_RULES, RuleSet, RulesError, build_rules
+from src.rules.remark_rules import DEFAULT_RULES, RuleSet, RulesError, build_rules
 
 SETTINGS_VERSION = 1
 SETTINGS_NOTE = (
@@ -90,8 +90,8 @@ def settings_to_json(settings: dict[str, Any]) -> str:
 
 def example_settings() -> dict[str, Any]:
     """기본값 설정 (개인정보 없음, 학기는 비움)."""
-    from src.semester_config import DEFAULT_FILM_FEE_PER_SHEET, DEFAULT_LOCKER_DEPOSIT_REMARK
-    from web.semester_inputs import EXAMPLE_AUTHOR, EXAMPLE_OVERDUE_RULES, EXAMPLE_OVERVIEW, EXAMPLE_SEMESTER
+    from src.rules.semester import DEFAULT_FILM_FEE_PER_SHEET, DEFAULT_LOCKER_DEPOSIT_REMARK
+    from web.form_inputs import EXAMPLE_AUTHOR, EXAMPLE_OVERDUE_RULES, EXAMPLE_OVERVIEW, EXAMPLE_SEMESTER
 
     return build_settings(
         semester_label=EXAMPLE_SEMESTER,

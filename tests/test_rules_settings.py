@@ -5,17 +5,16 @@ import io
 import json
 import zipfile
 from datetime import date
-from pathlib import Path
 
 import openpyxl
 import pytest
 
-from src.config_gen import parse_overdue_rules_data
-from src.parse_ledger import LedgerRow, Page
-from src.remarks import OverdueRecord, RefundRecord, build_page_remark
-from src.rules_config import DEFAULT_RULES, RulesError, build_rules
-from src.semester_config import parse_semester_config_data
-from web.semester_inputs import build_semester_from_overview, parse_business_overview
+from src.rules.overdue import parse_overdue_rules_data
+from src.inputs.ledger import LedgerRow, Page
+from src.draft.remarks import OverdueRecord, RefundRecord, build_page_remark
+from src.rules.remark_rules import DEFAULT_RULES, RulesError, build_rules
+from src.rules.semester import parse_semester_config_data
+from web.form_inputs import build_semester_from_overview, parse_business_overview
 from web.settings_file import build_settings, parse_rules_text
 
 from hwpx_builder import build_hwpx, standard_cells
@@ -273,5 +272,5 @@ def test_web_bad_rules_is_400(client):
 
 def test_retired_rule_key_is_ignored():
     # 잠깐 배포됐던 '구분_표기'가 든 예전 설정 파일도 그대로 불러올 수 있어야 한다.
-    from src.rules_config import build_rules
+    from src.rules.remark_rules import build_rules
     assert build_rules({"구분_표기": {"수입의환급": "환불"}}).source == build_rules().source

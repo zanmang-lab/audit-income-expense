@@ -3,12 +3,12 @@ from __future__ import annotations
 
 from datetime import date
 
-from src.config_gen import lookup_per_day, parse_overdue_rules_data
-from src.parse_ledger import LedgerRow, parse_ledger_workbook, split_pages
-from src.pipeline import ReviewItem, format_review_report, run_engine, split_refund_fee
-from src.remarks import OverdueRecord, RefundRecord
-from src.sheet_reader import InputIssue
-from web.semester_inputs import build_semester_from_overview
+from src.rules.overdue import lookup_per_day, parse_overdue_rules_data
+from src.inputs.ledger import LedgerRow, parse_ledger_workbook, split_pages
+from src.draft.pages import ReviewItem, format_review_report, run_engine, split_refund_fee
+from src.draft.remarks import OverdueRecord, RefundRecord
+from src.inputs.sheet_reader import InputIssue
+from web.form_inputs import build_semester_from_overview
 
 RULES = parse_overdue_rules_data({
     "default_per_day": 2000,
@@ -192,7 +192,7 @@ def test_ledger_business_missing_from_overview_is_reported(tmp_path):
 
     from hwpx_builder import build_hwpx, standard_cells
     from web.runner import prepare_run
-    from web.semester_inputs import UploadConfig
+    from web.form_inputs import UploadConfig
 
     def xlsx(rows):
         buf = io.BytesIO(); wb = openpyxl.Workbook()
@@ -226,8 +226,8 @@ def test_first_page_has_26_1_defaults():
 
 
 def test_keyword_matching_ignores_spacing():
-    from web.semester_inputs import EXAMPLE_OVERDUE_RULES
-    from src.parse_overdue_rules import parse_overdue_rules_text
+    from web.form_inputs import EXAMPLE_OVERDUE_RULES
+    from src.rules.overdue import parse_overdue_rules_text
 
     rules = parse_overdue_rules_text(EXAMPLE_OVERDUE_RULES)
     assert lookup_per_day("피크닉 테이블 1개", rules) == 3000
@@ -252,7 +252,7 @@ def test_refund_class_must_match_side():
 def test_renamed_hwp_gets_clear_message(tmp_path):
     # 확장자만 .hwpx로 바꾼 .hwp(OLE 형식) — 다른 이름으로 저장하라고 안내
     import pytest
-    from web.semester_inputs import resolve_template
+    from web.form_inputs import resolve_template
     with pytest.raises(ValueError) as exc:
         resolve_template(b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" + b"\0" * 100, "양식.hwpx", tmp_path)
     assert "확장자만 바꾸면" in str(exc.value) and "다른 이름으로 저장" in str(exc.value)
@@ -268,17 +268,17 @@ def test_rental_income_pages_get_evidence_flag():
 
 
 def test_default_rental_evidence_image_exists():
-    from src.evidence_image import default_rental_evidence
+    from src.hwpx.evidence_image import default_rental_evidence
     img = default_rental_evidence()
     assert img is not None and img.ext == "jpg" and img.width_px > 0
 
 
 def test_tripod_mat_boardgame_always_reviewed():
     # 삼각대·돗자리·보드게임: 규정 3,000원이지만 실제로 2,000원으로 받는 일이 많아 항상 검수필요.
-    from web.semester_inputs import EXAMPLE_OVERDUE_RULES
-    from src.parse_overdue_rules import parse_overdue_rules_text
-    from src.remarks import _calc_overdue_days
-    from src.rules_config import build_rules
+    from web.form_inputs import EXAMPLE_OVERDUE_RULES
+    from src.rules.overdue import parse_overdue_rules_text
+    from src.draft.remarks import _calc_overdue_days
+    from src.rules.remark_rules import build_rules
 
     rules = parse_overdue_rules_text(EXAMPLE_OVERDUE_RULES)
     watch = build_rules().overdue_watch
@@ -293,7 +293,7 @@ def test_tripod_mat_boardgame_always_reviewed():
 
 def test_default_overview_marks_library_locker_as_general():
     # '9. 중앙도서관 사물함 관리 운영'은 이름에 '사물함'이 있지만 '사물함 배부'가 아니라 일반 사업(꼬리표 없이).
-    from web.semester_inputs import EXAMPLE_OVERVIEW, build_semester_from_overview
+    from web.form_inputs import EXAMPLE_OVERVIEW, build_semester_from_overview
     sem = build_semester_from_overview(EXAMPLE_OVERVIEW, RULES)
     assert sem.role_for(9) == "general" and sem.name_for(9) == "중앙도서관 사물함 관리 운영"
     assert sem.role_for(1) == "locker"
@@ -301,7 +301,7 @@ def test_default_overview_marks_library_locker_as_general():
 
 def test_hwp_template_gets_save_as_message(tmp_path):
     import pytest
-    from web.semester_inputs import resolve_template
+    from web.form_inputs import resolve_template
     with pytest.raises(ValueError) as exc:
         resolve_template(b"\xd0\xcf\x11\xe0" + b"\0" * 50, "양식.hwp", tmp_path)
     assert "HWPX 문서" in str(exc.value)
@@ -309,7 +309,7 @@ def test_hwp_template_gets_save_as_message(tmp_path):
 
 def test_old_default_business_keywords_are_upgraded():
     # 예전 기본값('사물함', '대여')이 그대로 든 설정 파일을 불러와도 지금 기준('사물함배부', '물품대여')을 쓴다.
-    from src.rules_config import build_rules
+    from src.rules.remark_rules import build_rules
     old = {"사업종류_키워드": {"학생회비": ["총학", "학생회비"], "사물함": ["사물함"], "대여": ["대여", "물품대여"]}}
     r = build_rules(old)
     assert r.role_for_name("중앙도서관 사물함 관리 운영", 9) == "general"
@@ -320,7 +320,7 @@ def test_old_default_business_keywords_are_upgraded():
 
 
 def test_settings_from_result_zip_and_json():
-    import io, json, zipfile
+    import io, zipfile
     from fastapi.testclient import TestClient
     from web.app import app
     from web.settings_file import example_settings, settings_to_json
@@ -351,7 +351,7 @@ def test_rules_panel_hidden_unless_admin():
 
 def test_must_fix_only_when_document_has_a_hole():
     # 일수를 못 정하면 '꼭 고칠 것', 계산했으면 '확인할 것'. 종류로 묶인다.
-    from src.pipeline import group_by_kind, review_rows
+    from src.draft.pages import group_by_kind, review_rows
     sem = build_semester_from_overview("3. 물품 대여 사업", RULES)
     overdue = [OverdueRecord(None, "우산 3개", "가", 6000, None), OverdueRecord(None, "우산 1개", "나", 2500, None)]
     res = run_engine({3: [_row(3, 1, "가", income=6000), _row(3, 2, "나", income=2500)]}, sem, overdue, [])
@@ -367,7 +367,7 @@ def test_name_and_semester_are_not_remembered_or_saved():
     from fastapi.testclient import TestClient
     from web.app import app
     from web.settings_file import build_settings
-    from src.rules_config import build_rules
+    from src.rules.remark_rules import build_rules
     html = TestClient(app).get("/").text
     assert 'name="author_name" class="field"' in html and 'id="semester_label">' in html
     s = build_settings(semester_label="26-2", author={"성명": "홍길동", "직위": "위원장", "연락처": "010"},

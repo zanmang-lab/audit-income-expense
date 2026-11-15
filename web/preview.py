@@ -1,10 +1,10 @@
-"""미리보기 화면용 데이터와 수정 폼 읽기 (4단계)."""
+"""미리보기 화면에 보여 줄 내용과, 미리보기에서 고친 칸 읽기."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any, Mapping
 
-from src.review_levels import CHECK, MUST, NOTE
+from src.draft.review import CHECK, MUST, NOTE
 from web.runner import EDITABLE_FIELDS, PreparedRun
 
 # 폼 이름에는 영문을 쓴다: e-{사업번호}-{페이지}-{remark|class|content}
